@@ -15,7 +15,9 @@
 - [x] **Envio único ao Zen feito em 29/09** (`npm run publicar:teste -- --parcela <id> --documento <cpf> --confirmar`): PDF da Venda 2246 publicado no e-Doc do cliente de teste Leonardo (CPF 41323983821, já existia no Zen; e-mail da Marina) — documentId `6abc288c5f0ded141039c74e`, fileId `6abc288c7f61cbbef2d71a11`. Falta a conferência visual (pasta/valor/vencimento/e-mail)
 - [x] **Ciclo real implementado (29/09)**: detecção + entrega + tentativas + banco SQLite + travas (`server/src/sync.ts`, `db.ts`, `regras.ts`); 43 testes com CA/Zen simulados. Nasce DESLIGADO (`envioHabilitado=false`).
 - [ ] E-mails de operação (falha definitiva, Zen instável, erro de revisão, resumo 18h) para os 7 destinatários definidos em 29/09: iazan.corp@gmail.com, marina@iazan.com.br, michel@iazan.com.br, otavio@iazan.com.br, Joaozanelato@iazan.com.br, marinaseveriano@gmail.com, joaojr0307@gmail.com (hoje só webhook/log)
-- [ ] Painel: ligar `VITE_API_URL`, expor chave geral/data de corte/limite na tela Ativar, login real
+- [x] Painel: tela Ativar com controles do robô (chave geral, automático, data de corte, limite) e todas as telas lendo a API real (29/09; local via `.env.local` com `VITE_API_URL=http://localhost:3001`)
+- [ ] Login real do painel (hoje admin/iazan via env) — antes do deploy
+- [ ] Build do front na VPS com `VITE_API_URL` apontando para a API (hoje o nginx só expõe `/oauth/*`; expor a API ou servir no mesmo host)
 - [ ] Deploy na VPS (Node 24, `DB_PATH=/data/eron.db`, copiar `.tokens.json`, `TOKEN_ENC_KEY`, `API_TOKEN`) e repetir o teste ponta a ponta de lá
 - [ ] Ativação oficial: **01/10/2026**, pelo Heron. Nenhum envio real antes disso.
 - [ ] Confirmar formato/limite de arquivo aceito no e-Doc do cliente
