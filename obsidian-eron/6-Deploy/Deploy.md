@@ -52,10 +52,10 @@ docker compose up -d --build  # rebuild + subir
 
 ## Atualização 29/09 (noite) — robô real no ar, travado
 - Deploy pelo **`deploy.sh`** (Mac/Linux; tar + scp; apaga `src/`, `server/src/`, `server/scripts/`, `public/`, `obsidian-eron/` na VPS antes de extrair, para não sobrar arquivo morto).
-- **`/root/eron/.env`** criado (600): credenciais da CA, `SESSION_SECRET`, `TOKEN_ENC_KEY`, `ALLOWED_ORIGIN`, `VITE_API_URL=/api`. **`ZEN_API_TOKEN` vazio de propósito**: sem ele nenhuma rodada começa (`ZEN_NAO_CONFIGURADO`). Entra só na ativação.
+- **`/root/eron/.env`** criado (600): credenciais da CA, `SESSION_SECRET`, `TOKEN_ENC_KEY`, `ALLOWED_ORIGIN`, `VITE_API_URL=/api` e, a pedido da Marina (29/09 23h), **`ZEN_API_TOKEN` já presente**. A única trava é a **chave geral** (`settings.envioHabilitado`), que nasce desligada e só muda pelo interruptor do painel (login + confirmação). Gotcha corrigido: o compose não repassava `ZEN_*` ao container (8677288).
 - Front buildado com `VITE_API_URL=/api`; nginx encaminha `/api/` → `eron-api:3001/` (mesma origem, sem CORS). `/oauth/contaazul/*` continua exposto.
 - Imagens em Node 24 (`node:sqlite`). Volume `eron_eron-api-data` = `/data` com `eron.db` + `.tokens.json`.
 - Conexão da Conta Azul copiada para o volume (`docker cp` → `/data/.tokens.json`, chmod 600). **A cópia local foi apagada**: a CA troca o refresh_token a cada renovação, só um lugar pode renovar.
 - Usuário do painel `admin` criado (`docker compose exec eron-api node scripts/usuario.mjs criar admin`). Credenciais em `~/Documents/ChatGPT/heron/acessos-painel.txt` (fora do repo).
 - Verificado: front 200, `/api/healthz` ok, `/api/settings` 401 sem login, login ok, settings tudo `false`, detecção rodou (14 boletos aguardando), containers healthy.
-- **Ativação (01/10):** colocar `ZEN_API_TOKEN` no `.env` da VPS → `docker compose up -d eron-api` → no painel: data de corte 2026-10-01, chave geral, modo automático.
+- **Ativação (01/10):** só no painel: data de corte 2026-10-01 → ligar chave geral → ligar modo automático. Nada a fazer na VPS.
