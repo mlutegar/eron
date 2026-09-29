@@ -14,7 +14,8 @@
     "ca:get": "node scripts/ca-get.mjs",
     "ca:exchange": "node scripts/ca-exchange.mjs",
     "publicar:teste": "node scripts/publicar-teste.mjs",
-    "usuario": "node scripts/usuario.mjs"
+    "usuario": "node scripts/usuario.mjs",
+    "email:teste": "node scripts/email-teste.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

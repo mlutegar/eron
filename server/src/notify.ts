@@ -1,32 +1,59 @@
-// Alertas ativos de saude da integracao (ex.: OAuth caiu, refresh falhou).
-// Pluggavel: se ALERT_WEBHOOK_URL estiver definido, faz POST JSON (Slack/Discord
-// /webhook generico). Sempre loga. Nunca lanca — alerta nao pode derrubar o app.
+// Alertas de operacao: sempre logam; opcionalmente vao por webhook
+// (ALERT_WEBHOOK_URL) e por e-mail (Resend) para os destinatarios configurados
+// no robo. Nunca lancam — alerta nao pode derrubar o app.
+import type { EmailSender } from "./email.js";
 import { log } from "./logger.js";
 
-const WEBHOOK = process.env.ALERT_WEBHOOK_URL ?? "";
+export type Alerter = (key: string, subject: string, detail: string) => Promise<void>;
 
-// Anti-spam simples: nao repete o mesmo alerta em menos de N minutos.
-const COOLDOWN_MS = Number(process.env.ALERT_COOLDOWN_MIN ?? 30) * 60_000;
-const lastSent = new Map<string, number>();
-
-export async function sendAlert(key: string, subject: string, detail: string): Promise<void> {
-  const now = Date.now();
-  const prev = lastSent.get(key) ?? 0;
-  if (now - prev < COOLDOWN_MS) return;
-  lastSent.set(key, now);
-
-  log.error("ALERTA", { key, subject, detail });
-  if (!WEBHOOK) return;
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 5000);
-    await fetch(WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: `⚠️ [eron-api] ${subject}\n${detail}` }),
-      signal: ctrl.signal,
-    }).finally(() => clearTimeout(t));
-  } catch (err) {
-    log.warn("falha ao enviar alerta via webhook", { err: String(err) });
-  }
+export interface AlerterOptions {
+  email?: EmailSender;
+  /** Lidos a cada alerta, para refletir mudancas feitas no painel. */
+  destinatarios?: () => string[];
+  webhookUrl?: string;
+  /** Anti-spam: nao repete o mesmo `key` dentro desta janela. */
+  cooldownMs?: number;
+  now?: () => number;
+  fetcher?: typeof fetch;
 }
+
+export function createAlerter(opts: AlerterOptions = {}): Alerter {
+  const webhook = opts.webhookUrl ?? process.env.ALERT_WEBHOOK_URL ?? "";
+  const cooldown = opts.cooldownMs ?? Number(process.env.ALERT_COOLDOWN_MIN ?? 30) * 60_000;
+  const now = opts.now ?? (() => Date.now());
+  const fetcher = opts.fetcher ?? fetch;
+  const lastSent = new Map<string, number>();
+
+  return async (key, subject, detail) => {
+    const t = now();
+    const prev = lastSent.get(key);
+    if (prev !== undefined && t - prev < cooldown) return;
+    lastSent.set(key, t);
+    log.error("ALERTA", { key, subject, detail });
+
+    if (webhook) {
+      try {
+        await fetcher(webhook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: `⚠️ [IAZAN Sync] ${subject}\n${detail}` }),
+          signal: AbortSignal.timeout(5000),
+        });
+      } catch (err) {
+        log.warn("falha ao enviar alerta via webhook", { err: String(err) });
+      }
+    }
+
+    if (opts.email?.enabled) {
+      const to = opts.destinatarios?.() ?? [];
+      await opts.email.send({
+        to,
+        subject: `[IAZAN Sync] ${subject}`,
+        text: `${subject}\n\n${detail}\n\nPainel: https://eron.mlutegar.com\nAlerta: ${key}`,
+      });
+    }
+  };
+}
+
+/** Alerta padrao (log + webhook), usado quando o e-mail ainda nao foi configurado. */
+export const sendAlert: Alerter = createAlerter();

@@ -9,7 +9,8 @@ import { AuthService } from "./auth.js";
 import { authStatus, buildAuthorizeUrl, contaAzul, disconnect, exchangeCode, generatePkce, isConfigured } from "./contaazul.js";
 import { Db } from "./db.js";
 import { log } from "./logger.js";
-import { sendAlert } from "./notify.js";
+import { createResendSenderFromEnv } from "./email.js";
+import { createAlerter } from "./notify.js";
 import { startScheduler } from "./scheduler.js";
 import { createStore } from "./store.js";
 import { SyncEngine, SyncError } from "./sync.js";
@@ -23,7 +24,12 @@ const INTERVAL_MIN = Number(process.env.SYNC_INTERVAL_MIN ?? 10);
 const DB_PATH = process.env.DB_PATH ?? ".eron.db";
 
 const db = Db.open(DB_PATH);
+const email = createResendSenderFromEnv();
+// Alertas: log + webhook + e-mail para os destinatarios configurados no painel.
+let engineRef: SyncEngine | null = null;
+const sendAlert = createAlerter({ email, destinatarios: () => engineRef?.getSettings().destinatarios ?? [] });
 const engine = new SyncEngine({ ca: contaAzul, zen: () => zenFromEnv(), db, alert: sendAlert });
+engineRef = engine;
 const store = createStore(db, engine, INTERVAL_MIN);
 const auth = new AuthService(db, process.env.SESSION_SECRET ?? "");
 
@@ -192,8 +198,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "erro interno" });
 });
 
-startScheduler(INTERVAL_MIN, engine, store);
+startScheduler(INTERVAL_MIN, engine, store, db, email);
 app.listen(PORT, () => {
   const modoAuth = auth.temUsuarios() ? "sessao do painel" + (API_TOKEN ? " + API_TOKEN" : "") : API_TOKEN ? "API_TOKEN" : "ABERTA (sem usuarios e sem API_TOKEN)";
-  log.info("iazan-sync-api ouvindo", { port: PORT, auth: modoAuth, db: DB_PATH, settings: engine.getSettings() });
+  log.info("iazan-sync-api ouvindo", { port: PORT, auth: modoAuth, db: DB_PATH, email: email.enabled ? "ativo" : "desligado", settings: { ...engine.getSettings(), destinatarios: engine.getSettings().destinatarios.length } });
 });

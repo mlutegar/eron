@@ -39,6 +39,8 @@ services:
       TOKEN_ENC_KEY: "${TOKEN_ENC_KEY:-}"
       SESSION_SECRET: "${SESSION_SECRET:-}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      EMAIL_REMETENTE: "${EMAIL_REMETENTE:-}"
       ALERT_COOLDOWN_MIN: "${ALERT_COOLDOWN_MIN:-30}"
     volumes:
       - eron-api-data:/data
