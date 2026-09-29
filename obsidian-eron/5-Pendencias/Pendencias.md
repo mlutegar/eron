@@ -16,7 +16,7 @@
 - [x] **Ciclo real implementado (29/09)**: detecção + entrega + tentativas + banco SQLite + travas (`server/src/sync.ts`, `db.ts`, `regras.ts`); 43 testes com CA/Zen simulados. Nasce DESLIGADO (`envioHabilitado=false`).
 - [ ] E-mails de operação (falha definitiva, Zen instável, erro de revisão, resumo 18h) para os 7 destinatários definidos em 29/09: iazan.corp@gmail.com, marina@iazan.com.br, michel@iazan.com.br, otavio@iazan.com.br, Joaozanelato@iazan.com.br, marinaseveriano@gmail.com, joaojr0307@gmail.com (hoje só webhook/log)
 - [x] Painel: tela Ativar com controles do robô (chave geral, automático, data de corte, limite) e todas as telas lendo a API real (29/09; local via `.env.local` com `VITE_API_URL=http://localhost:3001`)
-- [ ] Login real do painel (hoje admin/iazan via env) — antes do deploy
+- [x] Login real do painel (29/09): usuários no SQLite (`npm run usuario -- criar <login>`), sessão assinada 12h, API exige sessão quando há usuários; modo mock mantém admin/iazan só para demonstração
 - [ ] Build do front na VPS com `VITE_API_URL` apontando para a API (hoje o nginx só expõe `/oauth/*`; expor a API ou servir no mesmo host)
 - [ ] Deploy na VPS (Node 24, `DB_PATH=/data/eron.db`, copiar `.tokens.json`, `TOKEN_ENC_KEY`, `API_TOKEN`) e repetir o teste ponta a ponta de lá
 - [ ] Ativação oficial: **01/10/2026**, pelo Heron. Nenhum envio real antes disso.
@@ -35,7 +35,7 @@
 
 ## Decisões de front (premissas — revisar)
 - [x] Login no dashboard — implementado (fase mock, credencial em `.env`); trocar por sessão real do backend no go-live
-- [ ] Definir credenciais reais de acesso (hoje `admin` / `iazan` via env)
+- [ ] Criar os usuários reais do painel na VPS (`npm run usuario -- criar <login>` dentro do container) e definir `SESSION_SECRET`
 - [ ] Quando backend existir, apontar `VITE_API_URL` e trocar `src/api/client.ts`
 
 ## Melhorias de front implementadas (28/09)

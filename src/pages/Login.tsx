@@ -7,14 +7,19 @@ export function Login() {
   const navigate = useNavigate();
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (login(user, pass)) {
-      navigate("/", { replace: true });
-    } else {
-      setError(true);
+    if (loading) return;
+    setLoading(true);
+    try {
+      const r = await login(user, pass);
+      if (r.ok) navigate("/", { replace: true });
+      else setError(r.mensagem);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -40,7 +45,7 @@ export function Login() {
               value={user}
               onChange={(e) => {
                 setUser(e.target.value);
-                setError(false);
+                setError(null);
               }}
               autoFocus
               className="w-full rounded-lg border border-line bg-ink-900 px-3 py-2 text-sm text-fg focus:border-flow/50"
@@ -55,17 +60,18 @@ export function Login() {
               value={pass}
               onChange={(e) => {
                 setPass(e.target.value);
-                setError(false);
+                setError(null);
               }}
               className="w-full rounded-lg border border-line bg-ink-900 px-3 py-2 text-sm text-fg focus:border-flow/50"
             />
           </div>
-          {error && <p className="text-sm text-danger">Usuario ou senha invalidos.</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           <button
             type="submit"
-            className="w-full rounded-lg border border-flow/40 bg-flow/10 py-2 text-sm font-medium text-flow transition-colors hover:bg-flow/20"
+            disabled={loading}
+            className="w-full rounded-lg border border-flow/40 bg-flow/10 py-2 text-sm font-medium text-flow transition-colors hover:bg-flow/20 disabled:opacity-60"
           >
-            Entrar
+            {loading ? "Entrando…" : "Entrar"}
           </button>
         </form>
         <p className="mt-4 text-center text-xs text-fg-faint">

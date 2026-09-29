@@ -13,7 +13,8 @@
     "probe:boleto": "node scripts/probe-boleto.mjs",
     "ca:get": "node scripts/ca-get.mjs",
     "ca:exchange": "node scripts/ca-exchange.mjs",
-    "publicar:teste": "node scripts/publicar-teste.mjs"
+    "publicar:teste": "node scripts/publicar-teste.mjs",
+    "usuario": "node scripts/usuario.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

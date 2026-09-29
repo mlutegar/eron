@@ -41,14 +41,24 @@ export const publishingSimulated = usingMock;
 const delay = <T>(value: T, ms = 260): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
 
+/** Token enviado ao backend: API_TOKEN fixo (se configurado) ou a sessao do login. */
+function authHeader(): Record<string, string> {
+  const token = TOKEN || (localStorage.getItem("iazan.session") ? (JSON.parse(localStorage.getItem("iazan.session")!) as { token?: string }).token : undefined);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function http<T>(path: string, schema: ZodType<T>, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
+      ...authHeader(),
     },
     ...init,
   });
+  if (res.status === 401) {
+    // Sessao expirada/invalida: o AuthProvider escuta este evento e volta ao login.
+    window.dispatchEvent(new Event("iazan:unauthorized"));
+  }
   if (!res.ok) {
     // O backend responde { error: CODIGO, mensagem } — repassa os dois para a UI orientar o operador.
     let detalhe = "";

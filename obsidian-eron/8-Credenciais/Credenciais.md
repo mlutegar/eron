@@ -20,7 +20,7 @@
 
 ## Pendências de segurança
 - [ ] 🔁 **Rotacionar o `client_secret`** no portal de devs — trafegou em texto no chat.
-- [ ] Definir credenciais reais de acesso ao dashboard (hoje `admin`/`iazan` via env).
+- [ ] Criar usuários reais do painel na VPS (`npm run usuario -- criar <login>`; senha scrypt no SQLite) e definir `SESSION_SECRET` no `.env` da VPS.
 - [ ] Confirmar quem detém o 2FA da conta CA para concluir o consentimento.
 
 ## Como conectar a Conta Azul (passo a passo)

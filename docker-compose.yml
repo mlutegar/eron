@@ -32,6 +32,7 @@ services:
       CA_TOKENS_PATH: "/data/.tokens.json"
       DB_PATH: "/data/eron.db"
       TOKEN_ENC_KEY: "${TOKEN_ENC_KEY:-}"
+      SESSION_SECRET: "${SESSION_SECRET:-}"
       ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
       ALERT_COOLDOWN_MIN: "${ALERT_COOLDOWN_MIN:-30}"
     volumes:

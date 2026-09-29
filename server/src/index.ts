@@ -5,6 +5,7 @@ import "dotenv/config";
 import { randomBytes } from "node:crypto";
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
+import { AuthService } from "./auth.js";
 import { authStatus, buildAuthorizeUrl, contaAzul, disconnect, exchangeCode, generatePkce, isConfigured } from "./contaazul.js";
 import { Db } from "./db.js";
 import { log } from "./logger.js";
@@ -24,8 +25,10 @@ const DB_PATH = process.env.DB_PATH ?? ".eron.db";
 const db = Db.open(DB_PATH);
 const engine = new SyncEngine({ ca: contaAzul, zen: () => zenFromEnv(), db, alert: sendAlert });
 const store = createStore(db, engine, INTERVAL_MIN);
+const auth = new AuthService(db, process.env.SESSION_SECRET ?? "");
 
 const app = express();
+app.set("trust proxy", true); // atras do nginx/tunnel: IP real para o limite de tentativas de login
 app.use(express.json());
 app.use(cors({ origin: ALLOWED_ORIGIN === "*" ? true : ALLOWED_ORIGIN.split(",").map((s) => s.trim()) }));
 
@@ -92,13 +95,43 @@ app.post("/oauth/contaazul/disconnect", (_req, res) => {
   res.json({ ok: true, ...authStatus() });
 });
 
-// Auth Bearer opcional: so exige token se API_TOKEN estiver definido.
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (!API_TOKEN) return next();
-  const header = req.header("authorization") ?? "";
-  if (header === `Bearer ${API_TOKEN}`) return next();
-  return res.status(401).json({ error: "nao autorizado" });
+// --- Login do painel (publico) ---
+app.post("/auth/login", (req: Request, res: Response) => {
+  const { usuario, senha } = (req.body ?? {}) as { usuario?: unknown; senha?: unknown };
+  if (typeof usuario !== "string" || typeof senha !== "string") {
+    return res.status(400).json({ error: "CREDENCIAIS_INVALIDAS", mensagem: "Informe usuario e senha." });
+  }
+  if (auth.bloqueado(req.ip ?? "")) {
+    return res.status(429).json({ error: "MUITAS_TENTATIVAS", mensagem: "Muitas tentativas. Aguarde 1 minuto." });
+  }
+  const r = auth.login(usuario, senha, req.ip ?? "");
+  if (!r) {
+    log.warn("login recusado", { usuario: usuario.slice(0, 80), ip: req.ip });
+    return res.status(401).json({ error: "CREDENCIAIS_INVALIDAS", mensagem: "Usuario ou senha invalidos." });
+  }
+  log.info("login ok", { usuario: r.sessao.sub, ip: req.ip });
+  res.json({ token: r.token, usuario: r.sessao.sub, expiraEm: new Date(r.sessao.exp * 1000).toISOString() });
 });
+
+// Acesso as rotas da API: API_TOKEN (integracoes) ou sessao do painel.
+// Sem API_TOKEN e sem usuarios cadastrados, fica aberta (dev) — o log avisa no boot.
+const bearer = (req: Request): string => (req.header("authorization") ?? "").replace(/^Bearer\s+/i, "");
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const token = bearer(req);
+  if (API_TOKEN && token === API_TOKEN) return next();
+  if (auth.temUsuarios()) {
+    if (token && auth.validar(token)) return next();
+    return res.status(401).json({ error: "NAO_AUTORIZADO", mensagem: "Sessao ausente ou expirada. Entre novamente." });
+  }
+  if (!API_TOKEN) return next();
+  return res.status(401).json({ error: "NAO_AUTORIZADO", mensagem: "nao autorizado" });
+});
+
+app.get("/auth/me", (req, res) => {
+  const sessao = auth.validar(bearer(req));
+  res.json(sessao ? { usuario: sessao.sub, expiraEm: new Date(sessao.exp * 1000).toISOString() } : { usuario: null });
+});
+app.post("/auth/logout", (_req, res) => res.json({ ok: true })); // sessao sem estado: o painel descarta o token
 
 const ok = <T>(res: Response, data: T) => res.json(data);
 
@@ -161,5 +194,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 startScheduler(INTERVAL_MIN, engine, store);
 app.listen(PORT, () => {
-  log.info("iazan-sync-api ouvindo", { port: PORT, auth: API_TOKEN ? "bearer" : "aberta", db: DB_PATH, settings: engine.getSettings() });
+  const modoAuth = auth.temUsuarios() ? "sessao do painel" + (API_TOKEN ? " + API_TOKEN" : "") : API_TOKEN ? "API_TOKEN" : "ABERTA (sem usuarios e sem API_TOKEN)";
+  log.info("iazan-sync-api ouvindo", { port: PORT, auth: modoAuth, db: DB_PATH, settings: engine.getSettings() });
 });

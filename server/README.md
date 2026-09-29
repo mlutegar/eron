@@ -49,10 +49,25 @@ Regras puras em `src/regras.ts`; banco em `src/db.ts`; leitura do painel em
 Tudo isso é configurável em `GET/POST /settings`
 (`autoRun`, `envioHabilitado`, `dataCorte`, `limitePorRodada`, `destinatarios`).
 
+## Login do painel
+
+Usuários ficam no SQLite com senha em scrypt; a sessão é um token assinado
+(`SESSION_SECRET`, 12 h) enviado em `Authorization: Bearer`. Regra de acesso à API:
+`API_TOKEN` (integrações) **ou** sessão válida; sem `API_TOKEN` e sem usuários a API
+fica aberta (só dev; o log avisa). Cinco senhas erradas no mesmo minuto bloqueiam a
+origem por 1 minuto.
+
+```bash
+npm run usuario -- criar heron      # pede a senha no terminal (ou SENHA=... no ambiente)
+npm run usuario -- listar
+npm run usuario -- remover heron
+```
+
 ## Scripts de apoio (a partir de `server/`, após `npm run build`)
 
 | Comando | O que faz |
 |---|---|
+| `npm run usuario -- criar\|listar\|remover` | Usuários do painel. |
 | `npm run check:zen` | Consulta de leitura às categorias do Zen (valida o token). |
 | `npm run ca:get -- /v1/...` | GET autenticado na API da Conta Azul, imprime o JSON. |
 | `npm run ca:exchange -- "<url com ?code=>"` | Troca manual do código OAuth quando o redirect registrado não aponta para este servidor. |
