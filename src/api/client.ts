@@ -34,9 +34,9 @@ import {
 const BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "";
 const TOKEN = import.meta.env.VITE_API_TOKEN ?? "";
 export const usingMock = BASE === "";
-// O backend atual tambem simula o upload no Zen. Mantenha o aviso na UI ate
-// a integracao real estar implementada e homologada.
-export const publishingSimulated = true;
+// Sem VITE_API_URL o painel roda com dados ficticios e o botao Ativar apenas simula.
+// Com a API real, quem decide se algo e publicado e a chave geral (settings.envioHabilitado).
+export const publishingSimulated = usingMock;
 
 const delay = <T>(value: T, ms = 260): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
@@ -49,7 +49,17 @@ async function http<T>(path: string, schema: ZodType<T>, init?: RequestInit): Pr
     },
     ...init,
   });
-  if (!res.ok) throw new Error(`Erro ${res.status} ao acessar ${path}`);
+  if (!res.ok) {
+    // O backend responde { error: CODIGO, mensagem } — repassa os dois para a UI orientar o operador.
+    let detalhe = "";
+    try {
+      const body = (await res.json()) as { error?: string; mensagem?: string };
+      detalhe = [body.error, body.mensagem].filter(Boolean).join(": ");
+    } catch {
+      /* corpo nao-JSON */
+    }
+    throw new Error(`Erro ${res.status} ao acessar ${path}${detalhe ? ` — ${detalhe}` : ""}`);
+  }
   const json = await res.json();
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
@@ -199,7 +209,7 @@ export async function getSettings(): Promise<Settings> {
   } catch {
     /* ignora */
   }
-  return { autoRun: false };
+  return { autoRun: false, envioHabilitado: false, dataCorte: null, limitePorRodada: 20, destinatarios: [] };
 }
 
 export async function setSettings(patch: Partial<Settings>): Promise<Settings> {

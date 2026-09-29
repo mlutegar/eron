@@ -40,3 +40,24 @@ describe("Activate", () => {
     );
   });
 });
+
+describe("Activate — controles do robo", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("mostra os controles com tudo desligado por padrao", async () => {
+    setup();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Controles do robo" })).toBeInTheDocument());
+    const chave = screen.getByRole("checkbox", { name: /Envio ao Zen \(chave geral\)/ });
+    const auto = screen.getByRole("checkbox", { name: /Modo automatico/ });
+    expect(chave).not.toBeChecked();
+    expect(auto).not.toBeChecked();
+    expect(auto).toBeDisabled(); // so depois da chave geral
+  });
+
+  it("traduz os bloqueios do backend para o operador", async () => {
+    const { friendlyError } = await import("./Activate");
+    expect(friendlyError(new Error("Erro 503 ao acessar /run — ENVIO_DESABILITADO: x"))).toMatch(/chave geral/);
+    expect(friendlyError(new Error("Erro 503 ao acessar /run — SEM_DATA_CORTE: x"))).toMatch(/data de corte/);
+    expect(friendlyError(new Error("Erro 409 ao acessar /run — EXECUCAO_EM_ANDAMENTO"))).toMatch(/em andamento/);
+  });
+});

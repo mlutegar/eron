@@ -114,8 +114,18 @@ export const LastRunSchema = RunResultSchema.nullable();
 export type LastRun = z.infer<typeof LastRunSchema>;
 
 // Preferencias operacionais (modo automatico do agendador).
+// Controles do robo (todos nascem desligados no backend):
+//  - envioHabilitado: chave geral — sem ela nada e publicado no Zen, nem pelo botao Ativar
+//  - autoRun: o agendador publica sozinho (7h-19h)
+//  - dataCorte: so boletos emitidos a partir desta data (AAAA-MM-DD) entram
+//  - limitePorRodada: teto de publicacoes por execucao
+//  - destinatarios: e-mails de alerta/resumo diario
 export const SettingsSchema = z.object({
   autoRun: z.boolean(),
+  envioHabilitado: z.boolean(),
+  dataCorte: z.string().nullable(),
+  limitePorRodada: z.number(),
+  destinatarios: z.array(z.string()),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 

@@ -184,8 +184,24 @@ export class SyncEngine {
       }, ts);
       return;
     }
+    // CPF/CNPJ ja na deteccao (uma chamada por boleto, nao por parcela): o painel
+    // mostra o documento e o mapeamento antes mesmo da entrega. Se falhar, a
+    // entrega busca de novo.
+    let documento: string | null = existente?.documento ?? null;
+    let clienteNome = base.cliente_nome;
+    if (!documento && base.venda_uuid) {
+      try {
+        const venda = (await this.deps.ca.detalheVenda(base.venda_uuid)) as VendaDetalhe;
+        documento = (venda.cliente?.documento ?? "").replace(/\D/g, "") || null;
+        clienteNome = venda.cliente?.nome ?? clienteNome;
+      } catch (err) {
+        log.warn("nao foi possivel obter o CPF/CNPJ na deteccao; fica para a entrega", { idParcela: item.id, err: String(err) });
+      }
+    }
     const patch = {
       ...base,
+      cliente_nome: clienteNome,
+      documento,
       id_cobranca: cobranca.id,
       valor: Number(cobranca.valor_composicao?.valor_liquido ?? base.valor),
       vencimento: (cobranca.data_vencimento ?? base.vencimento).slice(0, 10),
@@ -199,7 +215,7 @@ export class SyncEngine {
       return;
     }
     this.deps.db.inserirParcela({
-      id_parcela: item.id, documento: null, status: "REGISTRADO", motivo: null, tentativas: 0, proxima_tentativa: null,
+      id_parcela: item.id, status: "REGISTRADO", motivo: null, tentativas: 0, proxima_tentativa: null,
       documento_zen_id: null, arquivo_zen_id: null, cliente_zen_id: null, sincronizado_em: null, ...patch,
     }, ts);
     this.deps.db.registrarEvento(item.id, "REGISTRADO", `Boleto registrado na Conta Azul (cobranca ${cobranca.id}). Aguardando publicacao.`, ts);

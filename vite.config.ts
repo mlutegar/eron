@@ -9,5 +9,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
     css: false,
+    // Os testes do painel usam SEMPRE a camada mock: nunca falam com uma API real,
+    // mesmo que exista um .env.local apontando para o backend local.
+    env: { VITE_API_URL: "", VITE_API_TOKEN: "" },
   },
 });
