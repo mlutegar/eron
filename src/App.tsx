@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom"
 import { AppShell } from "./components/AppShell";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { Login } from "./pages/Login";
-import { Overview } from "./pages/Overview";
+import { Activate } from "./pages/Activate";
 import { SyncLog } from "./pages/SyncLog";
 import { Quarantine } from "./pages/Quarantine";
 import { ClientMapping } from "./pages/ClientMapping";
@@ -26,7 +26,7 @@ const router = createBrowserRouter([
     path: "/",
     element: <ProtectedLayout />,
     children: [
-      { index: true, element: <Overview /> },
+      { index: true, element: <Activate /> },
       { path: "log", element: <SyncLog /> },
       { path: "quarentena", element: <Quarantine /> },
       { path: "clientes", element: <ClientMapping /> },

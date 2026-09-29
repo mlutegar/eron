@@ -7,6 +7,13 @@ const syncStyles: Record<SyncStatus, string> = {
   ERRO: "bg-danger/10 text-danger border-danger/30",
 };
 
+export const statusAccent: Record<SyncStatus, "flow" | "warn" | "danger" | "muted"> = {
+  SINCRONIZADO: "flow",
+  REGISTRADO: "muted",
+  QUARENTENA: "warn",
+  ERRO: "danger",
+};
+
 const syncLabel: Record<SyncStatus, string> = {
   SINCRONIZADO: "Sincronizado",
   REGISTRADO: "Aguardando",

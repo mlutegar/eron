@@ -1,6 +1,7 @@
 import { PageHeader } from "../components/PageHeader";
 import { HealthDot } from "../components/StatusBadge";
-import { Loading, ErrorState } from "../components/Loading";
+import { ErrorState } from "../components/Loading";
+import { TableSkeleton } from "../components/Skeleton";
 import { useAsync } from "../lib/useAsync";
 import { getHealth } from "../api/client";
 import { dateTime } from "../lib/format";
@@ -15,7 +16,7 @@ const stateLabel: Record<HealthState, string> = {
 export function SystemStatus() {
   const { data, loading, error, refetch } = useAsync(getHealth, [], { refreshMs: 60_000 });
 
-  if (loading && !data) return <Loading />;
+  if (loading && !data) return <TableSkeleton rows={5} />;
   if (error || !data) return <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />;
 
   const geral: HealthState = data.servicos.some((s) => s.estado === "FALHA")

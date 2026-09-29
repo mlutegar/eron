@@ -5,3 +5,44 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3007:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  eron-api:
+    build: ./server
+    container_name: eron-api
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      API_TOKEN: "${API_TOKEN:-}"
+      ALLOWED_ORIGIN: "${ALLOWED_ORIGIN:-*}"
+      SYNC_INTERVAL_MIN: "${SYNC_INTERVAL_MIN:-15}"
+      CA_CLIENT_ID: "${CA_CLIENT_ID:-}"
+      CA_CLIENT_SECRET: "${CA_CLIENT_SECRET:-}"
+      CA_REDIRECT_URI: "${CA_REDIRECT_URI:-}"
+      CA_AUTHORIZE_URL: "${CA_AUTHORIZE_URL:-https://auth.contaazul.com/oauth2/authorize}"
+      CA_TOKEN_URL: "${CA_TOKEN_URL:-https://auth.contaazul.com/oauth2/token}"
+      CA_SCOPE: "${CA_SCOPE:-openid profile aws.cognito.signin.user.admin}"
+      CA_API_BASE: "${CA_API_BASE:-https://api-v2.contaazul.com}"
+      CA_PUBLIC_BASE: "${CA_PUBLIC_BASE:-https://public.contaazul.com}"
+      CA_TOKENS_PATH: "/data/.tokens.json"
+      TOKEN_ENC_KEY: "${TOKEN_ENC_KEY:-}"
+      ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-}"
+      ALERT_COOLDOWN_MIN: "${ALERT_COOLDOWN_MIN:-30}"
+    volumes:
+      - eron-api-data:/data
+    ports:
+      - "127.0.0.1:3008:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  eron-api-data:

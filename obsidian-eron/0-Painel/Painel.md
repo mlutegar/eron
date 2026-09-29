@@ -10,12 +10,16 @@ Questor Zen** para a **ASSEJURC** (contato: Heron). Fornecedor: **IAZAN (João)*
 - [[Escopo-e-Comercial]] — incluso/fora, cronograma e valores
 - [[Pendencias]] — o que falta validar/decidir
 - [[Deploy]] — deploy no VPS, porta alocada e Cloudflare Tunnel
+- [[Melhorias]] — backend Node, validacao Zod, healthchecks e deploy script
+- [[Credenciais]] — inventário de credenciais (sem valores) e como conectar a CA
 
 ## Status atual
 - ✅ Validação técnica em conta real (Venda 1591, R$ 10,00 — boleto IUGU IP)
-- ✅ Front-end (dashboard) implementado com dados mock
-- ⏳ Upload no Zen (e-Doc) — pendente de execução
-- ⏳ Backend integrador (Node) — a construir
+- ✅ Front-end implementado com dados mock
+- ✅ Tela inicial simplificada: **ativador** ("ligar o robô") + log subiu/não subiu ([[Frontend]])
+- ✅ Backend integrador (Node) — OAuth2 CA + cliente de API implementados ([[Arquitetura]])
+- 🔑 Conexão OAuth com a CA — código pronto; falta concluir consentimento (2FA) ([[Credenciais]])
+- ⏳ Upload no Zen (e-Doc) — próximo passo
 - 💰 Valor de implantação — a preencher
 
 ## Links rápidos

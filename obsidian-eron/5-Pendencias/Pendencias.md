@@ -3,10 +3,15 @@
 ← volta para [[Painel]] · anterior [[Escopo-e-Comercial]]
 
 ## Técnicas
+- [x] Backend integrador (Node) — estrutura pronta; OAuth CA + cliente de API implementados ([[Arquitetura]])
+- [x] OAuth2 Conta Azul (start/callback/refresh/status) + persistência de tokens (arquivo JSON gitignored)
+- [ ] 🔑 **Concluir o consentimento OAuth** — depende do **2FA** da conta CA. Abrir `/oauth/contaazul/start`, logar em `rio@assejurc.com.br`, aprovar 2FA e consentir. Ver [[Credenciais]]
+- [ ] Registrar `redirect_uri` no portal de devs (localhost + URL do tunnel)
+- [ ] Confirmar escopos necessários e os filtros da busca de contas a receber
 - [ ] ⏳ Validar upload real no Zen (e-Doc) — endpoint `POST /api/edoc/...` ([[Arquitetura]])
 - [ ] Confirmar formato/limite de arquivo aceito no e-Doc do cliente
-- [ ] Backend integrador (Node) — a construir; front já pronto para plugar ([[Frontend]])
-- [ ] Definir estratégia de renovação/armazenamento seguro de tokens
+- [ ] Migrar persistência de tokens para PostgreSQL (hoje arquivo JSON)
+- [ ] 🔁 Rotacionar o `client_secret` no portal (trafegou em texto no chat)
 
 ## Comerciais
 - [ ] 💰 Definir valor de implantação (campo "[preencher]" em [[Escopo-e-Comercial]])
@@ -33,6 +38,29 @@
 - [x] ESLint + Prettier + `.gitattributes`
 - [x] Testes (Vitest + Testing Library) — 9 passando
 - [x] CI (GitHub Actions): lint + test + build
+
+## Tela inicial simplificada — ativador (28/09)
+- [x] `/` agora é a tela **Ativar** (`src/pages/Activate.tsx`): botão "Ativar" → `runSync()` → log subiu/não subiu ([[Frontend]])
+- [x] `getPending()` + `runSync()` em `client.ts` (mock); tipos `RunItem`/`RunResult`
+- [x] Painel antigo (fluxo animado + cards) removido; menu renomeado "Painel" → "Ativar"
+- [x] Backend expõe `GET /pending`, `POST /run`, `GET /last-run`, `GET/POST /settings` (`server/src/index.ts`)
+- [ ] Testes reais só em **horário comercial** (banco pede código 2FA que só o cliente tem)
+- [ ] Pedir ao cliente **boleto teste** + **cliente teste** no Questor p/ validar ponta a ponta
+
+## Melhorias do ativador implementadas (28/09)
+- [x] **Lock de execução** (front desabilita + backend responde 409) — evita boleto duplicado
+- [x] **Idempotência**: `runSync` pula boletos já publicados (nunca sobe 2×)
+- [x] **Última execução persistida** (`GET /last-run` + `localStorage` no mock) — aparece ao abrir
+- [x] **Confirmação** antes de ligar o robô + trava contra clique duplo
+- [x] **Resumo financeiro**: `valorPublicado` (R$ que subiu) no resultado
+- [x] **Falhas agrupadas por motivo** + filtro "só falhas"
+- [x] **Reprocessar só os que falharam** (reexecução idempotente)
+- [x] **Exportar falhas em CSV** (reusa `src/lib/csv.ts`)
+- [x] **Mensagem amigável de 2FA/sessão** da Conta Azul (backend 503 → texto orientando pedir código)
+- [x] **Notificação ativa** ao terminar com falhas (`sendAlert` em `server/src/index.ts` / scheduler)
+- [x] **Modo automático** (toggle) — agendador publica sozinho quando ligado (`/settings` + `scheduler.ts`)
+- [x] **Log "ao vivo"** (revelação progressiva das linhas do resultado)
+- [x] **Testes**: `Activate.test.tsx` (front) + casos de `runSync`/idempotência/settings (`server/src/store.test.ts`)
 
 ## Backlog de front (próximos)
 - [ ] Sentry no front (hoje só ErrorBoundary com console)

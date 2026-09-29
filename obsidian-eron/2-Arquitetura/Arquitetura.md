@@ -25,6 +25,25 @@ Conta Azul (OAuth2)  ──►  Integrador (Node/Railway)  ──►  Questor Ze
 - e-Doc aceita upload até 20 MB; requer Tipo de Documento "Boleto" + Cliente + Usuário WS
 - `POST {dominio}.app.questorpublico.com.br/api/edoc/...` — upload ⏳ (ver [[Pendencias]])
 
+## OAuth2 Conta Azul (implementado no backend)
+Fluxo Authorization Code (Cognito). Rotas no `server/` (`src/contaazul.ts` + `index.ts`):
+1. `GET /oauth/contaazul/start` → gera `state` e redireciona para o `authorize`.
+2. Usuário loga na CA (`rio@assejurc.com.br`) + 2FA e consente.
+3. CA volta em `GET /oauth/contaazul/callback?code&state`.
+4. `exchangeCode` troca o `code` por `access_token` (1h) + `refresh_token` (~5 anos).
+5. `getValidAccessToken` renova sozinho quando faltam <60s (grant `refresh_token`).
+6. `GET /oauth/contaazul/status` informa se está conectado.
+
+Endpoints/escopos são via env (default = Cognito):
+- authorize `https://auth.contaazul.com/oauth2/authorize`
+- token `https://auth.contaazul.com/oauth2/token`
+- scope `openid profile aws.cognito.signin.user.admin` · API base `https://api-v2.contaazul.com`
+
+Tokens persistidos em arquivo JSON gitignored (`server/src/tokenStore.ts`,
+`CA_TOKENS_PATH`); em prod via volume Docker `/data`. Interface pronta p/ Postgres.
+⚠️ `redirect_uri` deve casar EXATAMENTE com o registrado no portal de devs
+(localhost em dev, URL do tunnel em prod — ver [[Deploy]]). Credenciais: [[Credenciais]].
+
 ## Match de cliente
 CNPJ da CA → empresa no Zen (mapeamento inicial + fallback quarentena).
 

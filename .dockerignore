@@ -2,6 +2,7 @@ node_modules
 dist
 dist-ssr
 .git
+server
 obsidian-eron
 *.local
 .DS_Store

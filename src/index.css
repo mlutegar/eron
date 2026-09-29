@@ -3,8 +3,36 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  /* Tema escuro (padrão) — canais RGB para casar com rgb(var(--x) / alpha) */
+  :root,
+  [data-theme="dark"] {
     color-scheme: dark;
+    --ink-900: 20 22 27;
+    --ink-800: 29 33 41;
+    --ink-700: 37 42 52;
+    --ink-600: 47 53 65;
+    --line: 51 58 71;
+    --fg: 232 234 237;
+    --fg-muted: 154 163 178;
+    --fg-faint: 138 146 160; /* subido de #69707E para melhorar contraste (WCAG) */
+    --flow: 63 214 140;
+    --warn: 245 177 76;
+    --danger: 240 101 94;
+  }
+  /* Tema claro */
+  [data-theme="light"] {
+    color-scheme: light;
+    --ink-900: 247 248 250;
+    --ink-800: 255 255 255;
+    --ink-700: 238 241 245;
+    --ink-600: 226 230 236;
+    --line: 214 219 226;
+    --fg: 26 29 35;
+    --fg-muted: 82 92 108;
+    --fg-faint: 108 117 133;
+    --flow: 20 155 100;
+    --warn: 176 114 25;
+    --danger: 202 52 45;
   }
   html,
   body,
@@ -15,11 +43,11 @@
     @apply bg-ink-900 text-fg font-sans antialiased;
   }
   ::selection {
-    background: rgba(63, 214, 140, 0.25);
+    background: rgb(var(--flow) / 0.25);
   }
   /* Foco visível por teclado */
   :focus-visible {
-    outline: 2px solid #3fd68c;
+    outline: 2px solid rgb(var(--flow));
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -31,6 +59,30 @@
   }
   .hairline {
     @apply border border-line;
+  }
+  /* Skeleton de carregamento */
+  .skeleton {
+    @apply rounded bg-ink-700;
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--fg) / 0.06),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
   }
 }
 

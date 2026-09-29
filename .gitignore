@@ -7,3 +7,8 @@ dist-ssr
 !.env.example
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Tokens OAuth persistidos localmente (nunca versionar)
+.tokens.json
+*.tokens.json
+server/.tokens.json

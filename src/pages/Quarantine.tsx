@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { PageHeader } from "../components/PageHeader";
-import { Loading, ErrorState } from "../components/Loading";
+import { ErrorState } from "../components/Loading";
+import { TableSkeleton } from "../components/Skeleton";
+import { useToast } from "../components/Toast";
 import { useAsync } from "../lib/useAsync";
 import { getQuarantine, reprocess } from "../api/client";
 import { brl, dateTime } from "../lib/format";
@@ -8,13 +10,20 @@ import type { QuarantineItem } from "../types/api";
 
 export function Quarantine() {
   const { data, loading, error, refetch } = useAsync(getQuarantine);
+  const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function handleReprocess(id: string) {
+  async function handleReprocess(id: string, cliente: string) {
     setBusy(id);
-    await reprocess(id);
-    setBusy(null);
-    refetch();
+    try {
+      await reprocess(id);
+      toast(`Reprocessamento de "${cliente}" iniciado`, "success");
+      refetch();
+    } catch {
+      toast("Falha ao reprocessar. Tente novamente.", "error");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -25,7 +34,7 @@ export function Quarantine() {
       />
 
       {loading ? (
-        <Loading />
+        <TableSkeleton rows={4} />
       ) : error || !data ? (
         <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />
       ) : data.length === 0 ? (
@@ -54,7 +63,7 @@ export function Quarantine() {
                 </div>
               </div>
               <button
-                onClick={() => handleReprocess(q.id)}
+                onClick={() => handleReprocess(q.id, q.boleto.cliente)}
                 disabled={busy === q.id}
                 className="shrink-0 rounded-lg border border-flow/40 bg-flow/10 px-4 py-2 text-sm font-medium text-flow transition-colors hover:bg-flow/20 disabled:opacity-50"
               >

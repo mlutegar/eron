@@ -1,6 +1,7 @@
 import { PageHeader } from "../components/PageHeader";
 import { DataTable, type Column } from "../components/DataTable";
-import { Loading, ErrorState } from "../components/Loading";
+import { ErrorState } from "../components/Loading";
+import { TableSkeleton } from "../components/Skeleton";
 import { useAsync } from "../lib/useAsync";
 import { getClientMap } from "../api/client";
 import type { ClientMapping as ClientMappingType } from "../types/api";
@@ -44,7 +45,7 @@ export function ClientMapping() {
       )}
 
       {loading ? (
-        <Loading />
+        <TableSkeleton rows={5} />
       ) : error || !data ? (
         <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />
       ) : (

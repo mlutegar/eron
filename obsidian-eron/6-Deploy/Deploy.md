@@ -36,3 +36,15 @@ docker compose up -d --build  # rebuild + subir
 - `docker compose ps` → `eron` Up, `127.0.0.1:3007->80/tcp`
 - `curl http://127.0.0.1:3007` → HTTP 200
 - `curl http://127.0.0.1:3007/quarantine` → HTTP 200 (fallback SPA OK)
+
+## Atualização 28/09 — front (ativador) + API
+- Enviado via `tar + scp` (Windows, sem rsync); `.env`/`node_modules`/`.git`/`dist` excluídos.
+- **Não havia `.env` no VPS** — nenhum secret a preservar; compose usa defaults `${VAR:-}`.
+- ⚠️ `tar -x` **não apaga** arquivos removidos localmente: foi preciso `rm src/pages/Overview.tsx`
+  obsoleto no VPS (quebrava o build por importar `OverviewSkeleton`). Lição: apagar no VPS
+  os arquivos deletados localmente antes de rebuildar.
+- Agora sobem **2 serviços**: `eron` (front, 3007→80) e `eron-api` (API Node, 3008→3001).
+- Volume `eron_eron-api-data` (`/data/.tokens.json`) para tokens OAuth da Conta Azul.
+- Rebuild: `docker compose up -d --build` (só o projeto eron; nenhum outro container tocado).
+- Healthy: front HTTP 200; API `/healthz` `{"status":"ok"}`; `cloudflared` active.
+- URLs mantidas (portas inalteradas): **https://eron.mlutegar.com** (túnel "emme" → `localhost:3007`).

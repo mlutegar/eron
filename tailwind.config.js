@@ -1,24 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: ["class", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
+        // Cores via CSS variables (canais RGB) para suportar tema claro/escuro.
         ink: {
-          900: "#14161B",
-          800: "#1D2129",
-          700: "#252A34",
-          600: "#2F3541",
+          900: "rgb(var(--ink-900) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          600: "rgb(var(--ink-600) / <alpha-value>)",
         },
-        line: "#333A47",
+        line: "rgb(var(--line) / <alpha-value>)",
         fg: {
-          DEFAULT: "#E8EAED",
-          muted: "#9AA3B2",
-          faint: "#69707E",
+          DEFAULT: "rgb(var(--fg) / <alpha-value>)",
+          muted: "rgb(var(--fg-muted) / <alpha-value>)",
+          faint: "rgb(var(--fg-faint) / <alpha-value>)",
         },
-        flow: "#3FD68C",
-        warn: "#F5B14C",
-        danger: "#F0655E",
+        flow: "rgb(var(--flow) / <alpha-value>)",
+        warn: "rgb(var(--warn) / <alpha-value>)",
+        danger: "rgb(var(--danger) / <alpha-value>)",
       },
       fontFamily: {
         display: ['"Space Grotesk"', "system-ui", "sans-serif"],
