@@ -25,7 +25,8 @@ interface ZenClientRecord {
 }
 
 export interface ZenBoletoInput {
-  cnpj: string;
+  /** CPF (11 digitos) ou CNPJ (14 digitos) do cliente, com ou sem mascara. */
+  documento: string;
   pdf: Uint8Array;
   fileName: string;
   title: string;
@@ -115,10 +116,10 @@ export class ZenClient {
     return matches[0];
   }
 
-  /** Consulta somente de leitura; confirma o CNPJ antes de usar CodigoCliente. */
-  async getClientIdByCnpj(cnpj: string): Promise<string> {
-    const digits = cnpj.replace(/\D/g, "");
-    if (!/^\d{14}$/.test(digits)) throw new ZenError("CNPJ invalido.");
+  /** Consulta somente de leitura; confirma o CPF/CNPJ antes de usar CodigoCliente. */
+  async getClientIdByDocumento(documento: string): Promise<string> {
+    const digits = documento.replace(/\D/g, "");
+    if (!/^(\d{11}|\d{14})$/.test(digits)) throw new ZenError("CPF/CNPJ invalido.");
 
     const response = await this.request(`clientes/${digits}`);
     const raw: unknown = await response.json();
@@ -129,7 +130,7 @@ export class ZenClient {
       throw new ZenError("CodigoCliente ausente na resposta do Zen.");
     }
     if (typeof client.InscricaoFederal !== "string" || client.InscricaoFederal.replace(/\D/g, "") !== digits) {
-      throw new ZenError("O Zen retornou um cliente com CNPJ diferente.");
+      throw new ZenError("O Zen retornou um cliente com CPF/CNPJ diferente.");
     }
     return client.CodigoCliente;
   }
@@ -180,7 +181,7 @@ export class ZenClient {
     validateBoletoFields(input.title, input.dueDate, input.amount);
     const [categoryId, clientId] = await Promise.all([
       this.getBoletoCategoryId(),
-      this.getClientIdByCnpj(input.cnpj),
+      this.getClientIdByDocumento(input.documento),
     ]);
     const fileId = await this.uploadPdf(input.pdf, input.fileName);
     const documentId = await this.createDocument({

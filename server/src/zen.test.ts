@@ -33,7 +33,7 @@ describe("ZenClient", () => {
     const client = new ZenClient(base, token, fetcher as unknown as typeof fetch);
 
     const result = await client.publishBoleto({
-      cnpj: "12.345.678/0001-90",
+      documento: "12.345.678/0001-90",
       pdf,
       fileName: "boleto-teste.pdf",
       title: "Boleto de teste",
@@ -56,6 +56,30 @@ describe("ZenClient", () => {
     expect(calls.every((call) => call.init.redirect === "manual")).toBe(true);
   });
 
+  it("aceita CPF (11 digitos) e consulta o cliente pelos digitos", async () => {
+    const paths: string[] = [];
+    const fetcher = vi.fn(async (url: URL) => {
+      const path = url.pathname.split("/").slice(4).join("/");
+      paths.push(path);
+      if (path === "categorias") return reply([{ Codigo: "cat-boleto", Descricao: "Boleto" }]);
+      if (path.startsWith("clientes/")) return reply({ CodigoCliente: "cliente-pf", InscricaoFederal: "413.239.838-21" });
+      if (path.startsWith("upload/")) return reply("arquivo-1");
+      if (path === "documentos") return reply("documento-1");
+      throw new Error("Endpoint inesperado no teste");
+    });
+    const client = new ZenClient(base, token, fetcher as unknown as typeof fetch);
+    const result = await client.publishBoleto({
+      documento: "413.239.838-21", pdf, fileName: "boleto-2246.pdf", title: "Venda 2246", dueDate: "2026-10-02", amount: 100,
+    });
+    expect(result.clientId).toBe("cliente-pf");
+    expect(paths).toContain("clientes/41323983821");
+  });
+
+  it("recusa documento que nao e CPF nem CNPJ", async () => {
+    const client = new ZenClient(base, token, vi.fn() as unknown as typeof fetch);
+    await expect(client.getClientIdByDocumento("123")).rejects.toThrow("CPF/CNPJ invalido");
+  });
+
   it("interrompe antes do upload se o Zen devolver outro CNPJ", async () => {
     const fetcher = vi.fn(async (url: URL) => {
       if (url.pathname.endsWith("/categorias")) return reply([{ Codigo: "cat-boleto", Descricao: "Boleto" }]);
@@ -64,8 +88,8 @@ describe("ZenClient", () => {
     const client = new ZenClient(base, token, fetcher as unknown as typeof fetch);
 
     await expect(client.publishBoleto({
-      cnpj: "12.345.678/0001-90", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-10-15", amount: 10,
-    })).rejects.toThrow("CNPJ diferente");
+      documento: "12.345.678/0001-90", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-10-15", amount: 10,
+    })).rejects.toThrow("CPF/CNPJ diferente");
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
@@ -80,7 +104,7 @@ describe("ZenClient", () => {
     const client = new ZenClient(base, token, fetcher as unknown as typeof fetch);
 
     await expect(client.publishBoleto({
-      cnpj: "12345678000190", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-10-15", amount: 10,
+      documento: "12345678000190", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-10-15", amount: 10,
     })).rejects.toThrow("mais de uma categoria Boleto");
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
@@ -94,7 +118,7 @@ describe("ZenClient", () => {
     });
     const client = new ZenClient(base, token, fetcher as unknown as typeof fetch);
     await expect(client.publishBoleto({
-      cnpj: "12345678000190", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-10-15", amount: 10,
+      documento: "12345678000190", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-10-15", amount: 10,
     })).rejects.toThrow("CodigoDocumento ausente");
   });
 
@@ -109,7 +133,7 @@ describe("ZenClient", () => {
     const fetcher = vi.fn();
     const client = new ZenClient(base, token, fetcher as unknown as typeof fetch);
     await expect(client.publishBoleto({
-      cnpj: "12345678000190", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-02-31", amount: 10,
+      documento: "12345678000190", pdf, fileName: "boleto-teste.pdf", title: "Teste", dueDate: "2026-02-31", amount: 10,
     })).rejects.toThrow("vencimento ou valor");
     expect(fetcher).not.toHaveBeenCalled();
   });
