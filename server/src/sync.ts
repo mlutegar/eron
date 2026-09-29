@@ -42,7 +42,7 @@ export interface SyncDeps {
 }
 
 export class SyncError extends Error {
-  constructor(readonly code: "EXECUCAO_EM_ANDAMENTO" | "ENVIO_DESABILITADO" | "SEM_DATA_CORTE" | "FORA_DO_HORARIO", message: string) {
+  constructor(readonly code: "EXECUCAO_EM_ANDAMENTO" | "ENVIO_DESABILITADO" | "SEM_DATA_CORTE" | "FORA_DO_HORARIO" | "ZEN_NAO_CONFIGURADO", message: string) {
     super(message);
     this.name = "SyncError";
   }
@@ -256,6 +256,12 @@ export class SyncEngine {
     const agora = this.now();
     if (!opts.manual && !dentroDoHorarioDeEntrega(agora)) throw new SyncError("FORA_DO_HORARIO", "Fora do horario de entrega (7h-19h).");
     if (this.running) throw new SyncError("EXECUCAO_EM_ANDAMENTO", "Ja existe uma execucao em andamento.");
+    // Sem token/dominio do Zen (ex.: fase de demonstracao) nenhuma rodada comeca.
+    try {
+      this.deps.zen();
+    } catch {
+      throw new SyncError("ZEN_NAO_CONFIGURADO", "O Questor Zen nao esta configurado neste servidor. Nenhum documento foi publicado.");
+    }
 
     this.running = true;
     try {

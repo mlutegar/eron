@@ -1,5 +1,8 @@
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
+# URL da API embutida no build do painel. "/api" = mesma origem, via proxy do nginx.
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
 COPY package*.json ./
 RUN npm ci
 COPY . .

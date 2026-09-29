@@ -173,6 +173,15 @@ describe("SyncEngine — travas de entrega", () => {
     await expect(engine.entregar({ manual: false })).rejects.toMatchObject({ code: "ENVIO_DESABILITADO" });
   });
 
+  it("sem Zen configurado a rodada e recusada antes de comecar, mesmo com tudo ligado", async () => {
+    const db = Db.open(":memory:");
+    const engine = new SyncEngine({ ca: fakeCa([parcelaCA("p1")]), zen: () => { throw new Error("ZEN_API_TOKEN ausente"); }, db, now: () => AGORA });
+    engine.setSettings({ envioHabilitado: true, autoRun: true, dataCorte: "2026-09-30" });
+    await engine.detectar();
+    await expect(engine.entregar({ manual: true })).rejects.toMatchObject({ code: "ZEN_NAO_CONFIGURADO" });
+    expect(db.getParcela("p1")?.status).toBe("REGISTRADO"); // nada virou falha
+  });
+
   it("habilitar o envio sem data de corte define a data de corte como hoje", () => {
     const { engine } = engineCom([]);
     const s = engine.setSettings({ envioHabilitado: true });

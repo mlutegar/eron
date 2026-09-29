@@ -1,6 +1,9 @@
 services:
   eron:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_URL: "${VITE_API_URL:-/api}"
     container_name: eron
     restart: unless-stopped
     ports:
@@ -19,7 +22,7 @@ services:
     environment:
       PORT: "3001"
       API_TOKEN: "${API_TOKEN:-}"
-      ALLOWED_ORIGIN: "${ALLOWED_ORIGIN:-*}"
+      ALLOWED_ORIGIN: "${ALLOWED_ORIGIN:-https://eron.mlutegar.com}"
       SYNC_INTERVAL_MIN: "${SYNC_INTERVAL_MIN:-10}"
       CA_CLIENT_ID: "${CA_CLIENT_ID:-}"
       CA_CLIENT_SECRET: "${CA_CLIENT_SECRET:-}"

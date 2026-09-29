@@ -38,6 +38,9 @@ export function friendlyError(e: unknown): string {
   if (/SEM_DATA_CORTE/.test(msg)) {
     return "Defina a data de corte antes de publicar (so boletos emitidos a partir dela entram).";
   }
+  if (/ZEN_NAO_CONFIGURADO/.test(msg)) {
+    return "O Questor Zen ainda nao esta configurado neste servidor. Nenhum documento foi publicado.";
+  }
   if (/FORA_DO_HORARIO/.test(msg)) {
     return "Fora do horario de entrega (7h as 19h).";
   }
