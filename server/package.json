@@ -12,7 +12,8 @@
     "check:zen": "node scripts/check-zen.mjs",
     "probe:boleto": "node scripts/probe-boleto.mjs",
     "ca:get": "node scripts/ca-get.mjs",
-    "ca:exchange": "node scripts/ca-exchange.mjs"
+    "ca:exchange": "node scripts/ca-exchange.mjs",
+    "publicar:teste": "node scripts/publicar-teste.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

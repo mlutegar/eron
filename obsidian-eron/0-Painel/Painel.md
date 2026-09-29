@@ -19,7 +19,7 @@ Questor Zen** para a **ASSEJURC** (contato: Heron). Fornecedor: **IAZAN (João)*
 - ✅ Tela inicial simplificada: **ativador** ("ligar o robô") + log subiu/não subiu ([[Frontend]])
 - ✅ Backend integrador (Node) — OAuth2 CA + cliente de API implementados ([[Arquitetura]])
 - ✅ Conexão OAuth com a CA concluída (29/09) + PDF do boleto de teste (Venda 2246) lido pela API ([[Pendencias]])
-- ⏳ Upload no Zen (e-Doc) — próximo passo: envio único para cliente fictício
+- ✅ Upload no Zen (e-Doc) — envio único da Venda 2246 feito em 29/09 (ponta a ponta validado); falta conferência visual e o ciclo automático ([[Pendencias]])
 - 💰 Valor de implantação — a preencher
 
 ## Links rápidos

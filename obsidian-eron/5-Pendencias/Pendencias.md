@@ -9,10 +9,11 @@
 - [ ] Registrar `redirect_uri` no portal de devs (hoje `https://google.com`, editável em "Editar informações"). Só precisa mudar quando o consentimento for feito pelo callback do servidor; o refresh_token atual (5 anos) pode ser copiado para a VPS
 - [ ] Confirmar escopos necessários e os filtros da busca de contas a receber
 - [x] Cliente e-Doc preparado conforme API do Zen: upload do PDF + cadastro do documento, com testes simulados (`server/src/zen.ts`)
-- [ ] ⏳ Validar upload real no Zen com empresa e boleto de teste escolhidos — endpoints `/api/v1/{token}/upload/{arquivo}` e `/api/v1/{token}/documentos`
+- [x] Upload real no Zen validado em 29/09 — endpoints `/api/v1/{token}/upload/{arquivo}` e `/api/v1/{token}/documentos` funcionam como no cliente `server/src/zen.ts`
 - [x] Token Zen validado em 29/09: consulta de categorias da API respondeu HTTP 200 e encontrou “Boleto” (sem upload)
 - [x] Boleto de teste lido pela API em 29/09 — Venda 2246 (R$ 100, venc. 02/10, Leonardo Augusto Andrade Neves, **CPF**). PDF idêntico ao emitido pela CA. Nada enviado ao Zen
-- [ ] Ligar o fluxo ao cliente Zen: envio único e controlado para o cliente fictício (mesmos dados do boleto de teste, e-mail nosso)
+- [x] **Envio único ao Zen feito em 29/09** (`npm run publicar:teste -- --parcela <id> --documento <cpf> --confirmar`): PDF da Venda 2246 publicado no e-Doc do cliente de teste Leonardo (CPF 41323983821, já existia no Zen; e-mail da Marina) — documentId `6abc288c5f0ded141039c74e`, fileId `6abc288c7f61cbbef2d71a11`. Falta a conferência visual (pasta/valor/vencimento/e-mail)
+- [ ] Ligar o ciclo real (detecção → CPF/CNPJ → dedup → publicação) ao código validado
 - [ ] Confirmar formato/limite de arquivo aceito no e-Doc do cliente
 - [ ] Migrar persistência de tokens para PostgreSQL (hoje arquivo JSON)
 - [ ] 🔁 Rotacionar o `client_secret` do app de **teste da Marina** (trafegou em texto no chat). O app do Heron, que é o usado agora, não vazou
