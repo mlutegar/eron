@@ -79,24 +79,20 @@ describe("contaazul OAuth", () => {
     await expect(exchangeCode("bad", "v")).rejects.toThrow(/respondeu 400/);
   });
 
-  it("baixa apenas PDF verdadeiro, usando o id da cobranca e sem seguir redirecionamentos", async () => {
+  it("baixa apenas PDF verdadeiro do endpoint publico, sem token e sem seguir redirecionamentos", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
-    fetchMock.mockResolvedValueOnce(tokenResponse({ access_token: "A1", refresh_token: "R1", expires_in: 3600 }));
-    await exchangeCode("code", "verifier");
     fetchMock.mockResolvedValueOnce(new Response(Buffer.from("%PDF-1.7\nconteudo"), {
       headers: { "Content-Type": "application/pdf" },
     }));
     const pdf = await contaAzul.baixarPdfBoleto("cobranca-123");
     expect(Buffer.from(pdf).toString()).toContain("%PDF-1.7");
-    expect(fetchMock.mock.calls[1][0]).toBe("https://public.contaazul.com/payments/billing/charge/file/cobranca-123");
-    expect((fetchMock.mock.calls[1][1] as RequestInit).redirect).toBe("manual");
-    expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer A1" });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://public.contaazul.com/payments/billing/charge/file/cobranca-123");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).redirect).toBe("manual");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).headers).not.toHaveProperty("Authorization");
   });
 
   it("recusa pagina HTML apresentada como boleto", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
-    fetchMock.mockResolvedValueOnce(tokenResponse({ access_token: "A1", refresh_token: "R1", expires_in: 3600 }));
-    await exchangeCode("code", "verifier");
     fetchMock.mockResolvedValueOnce(new Response("<html>login</html>", { status: 200 }));
     await expect(contaAzul.baixarPdfBoleto("cobranca-123")).rejects.toThrow("nao devolveu um PDF valido");
   });

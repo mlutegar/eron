@@ -5,16 +5,17 @@
 ## Técnicas
 - [x] Backend integrador (Node) — estrutura pronta; OAuth CA + cliente de API implementados ([[Arquitetura]])
 - [x] OAuth2 Conta Azul (start/callback/refresh/status) + persistência de tokens (arquivo JSON gitignored)
-- [ ] 🔑 **Concluir o consentimento OAuth** — depende do **2FA** da conta CA. Abrir `/oauth/contaazul/start`, logar em `rio@assejurc.com.br`, aprovar 2FA e consentir. Ver [[Credenciais]]
-- [ ] Registrar `redirect_uri` no portal de devs (localhost + URL do tunnel)
+- [x] 🔑 **Consentimento OAuth concluído em 29/09** com o app do portal do Heron ("Integração boletos para Questor"). Fluxo usado: URL de autorização copiada do portal → login + 2FA → redirect em `https://google.com/?code=...` → `npm run ca:exchange -- "<url>"` (código vale 3 min). Tokens em `server/.tokens.json`. Ver [[Credenciais]]
+- [ ] Registrar `redirect_uri` no portal de devs (hoje `https://google.com`, editável em "Editar informações"). Só precisa mudar quando o consentimento for feito pelo callback do servidor; o refresh_token atual (5 anos) pode ser copiado para a VPS
 - [ ] Confirmar escopos necessários e os filtros da busca de contas a receber
 - [x] Cliente e-Doc preparado conforme API do Zen: upload do PDF + cadastro do documento, com testes simulados (`server/src/zen.ts`)
 - [ ] ⏳ Validar upload real no Zen com empresa e boleto de teste escolhidos — endpoints `/api/v1/{token}/upload/{arquivo}` e `/api/v1/{token}/documentos`
 - [x] Token Zen validado em 29/09: consulta de categorias da API respondeu HTTP 200 e encontrou “Boleto” (sem upload)
-- [ ] Conectar a conta de desenvolvimento da Conta Azul por OAuth, confirmar acesso aos boletos/PDFs de teste e ligar o fluxo ao cliente Zen
+- [x] Boleto de teste lido pela API em 29/09 — Venda 2246 (R$ 100, venc. 02/10, Leonardo Augusto Andrade Neves, **CPF**). PDF idêntico ao emitido pela CA. Nada enviado ao Zen
+- [ ] Ligar o fluxo ao cliente Zen: envio único e controlado para o cliente fictício (mesmos dados do boleto de teste, e-mail nosso)
 - [ ] Confirmar formato/limite de arquivo aceito no e-Doc do cliente
 - [ ] Migrar persistência de tokens para PostgreSQL (hoje arquivo JSON)
-- [ ] 🔁 Rotacionar o `client_secret` no portal (trafegou em texto no chat)
+- [ ] 🔁 Rotacionar o `client_secret` do app de **teste da Marina** (trafegou em texto no chat). O app do Heron, que é o usado agora, não vazou
 
 ## Comerciais
 - [ ] 💰 Definir valor de implantação (campo "[preencher]" em [[Escopo-e-Comercial]])

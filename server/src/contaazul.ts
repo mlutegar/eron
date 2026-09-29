@@ -20,6 +20,8 @@ const env = (k: string, fallback = ""): string => process.env[k] ?? fallback;
 const CLIENT_ID = env("CA_CLIENT_ID");
 const CLIENT_SECRET = env("CA_CLIENT_SECRET");
 const REDIRECT_URI = env("CA_REDIRECT_URI", "http://localhost:3001/oauth/contaazul/callback");
+// Endpoints da documentacao oficial atual (developers.contaazul.com/auth e /changecode).
+// O portal de devs gera a URL de autorizacao neste mesmo formato.
 const AUTHORIZE_URL = env("CA_AUTHORIZE_URL", "https://login.contaazul.com/#/oauth/authorize");
 const TOKEN_URL = env("CA_TOKEN_URL", "https://api-v2.contaazul.com/oauth/token");
 const SCOPE = env("CA_SCOPE", "openid profile aws.cognito.signin.user.admin");
@@ -118,7 +120,8 @@ function persist(tok: TokenResponse, previousRefresh?: string): StoredTokens {
 /** Etapa 2: troca o `code` por tokens (com code_verifier do PKCE, se houver). */
 export async function exchangeCode(code: string, codeVerifier?: string): Promise<StoredTokens> {
   if (!isConfigured()) throw new ContaAzulError("CA_CLIENT_ID/CA_CLIENT_SECRET nao configurados");
-  const body = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: REDIRECT_URI, client_id: CLIENT_ID });
+  // Conforme a doc oficial: client_id/secret vao so no header Basic, nao no body.
+  const body = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: REDIRECT_URI });
   if (codeVerifier) body.set("code_verifier", codeVerifier);
   const tok = await postToken(body);
   log.info("Conta Azul conectada via authorization_code");
@@ -140,7 +143,7 @@ export function refreshAccessToken(): Promise<StoredTokens> {
 async function doRefresh(): Promise<StoredTokens> {
   const current = tokenStore.load();
   if (!current?.refreshToken) throw new ContaAzulError("sem refresh_token — refazer o consentimento");
-  const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: current.refreshToken, client_id: CLIENT_ID });
+  const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: current.refreshToken });
   try {
     const tok = await postToken(body);
     log.info("access_token renovado");
@@ -243,23 +246,24 @@ export const contaAzul = {
     return apiGet(`/v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/${encodeURIComponent(idCobranca)}`, ContaReceberSchema);
   },
 
-  /** 4) URL candidata do PDF do boleto (ainda nao validada com cobranca real). */
+  /**
+   * 4) URL do PDF do boleto. `idCobranca` e o `id` devolvido por statusCobranca().
+   * Endpoint publico da fatura (validado com a Venda 1591): nao exige token e
+   * nao e documentado na API oficial — pode mudar sem aviso.
+   */
   pdfBoletoUrl(idCobranca: string): string {
     return `${PUBLIC_BASE}/payments/billing/charge/file/${encodeURIComponent(idCobranca)}`;
   },
 
-  /**
-   * Le um boleto para homologacao. O endpoint de PDF ainda precisa ser
-   * confirmado com uma cobranca real; nunca retorna HTML como se fosse PDF.
-   */
+  /** Baixa o PDF do boleto. Nunca retorna HTML como se fosse PDF. */
   async baixarPdfBoleto(idCobranca: string): Promise<Uint8Array> {
     if (!/^[A-Za-z0-9-]+$/.test(idCobranca)) {
       throw new ContaAzulError("id da cobranca invalido");
     }
-    const token = await getValidAccessToken();
+    // Endpoint publico: o token da Conta Azul nao e enviado (nem precisa).
     const response = await fetch(this.pdfBoletoUrl(idCobranca), {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/pdf" },
-      redirect: "manual", // nao encaminha o token a outro host
+      headers: { Accept: "application/pdf" },
+      redirect: "manual",
       signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok) {

@@ -16,7 +16,7 @@ Conta Azul (OAuth2)  ──►  Integrador (Node/Railway)  ──►  Questor Ze
 2. `GET /v1/financeiro/eventos-financeiros/contas-a-receber/buscar` — parcelas ✅
 3. `GET /v1/financeiro/eventos-financeiros/parcelas/{id}` — detalhe + id cobrança ✅
 4. `GET /v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/{id}` — status ✅
-5. `GET https://public.contaazul.com/payments/billing/charge/file/{id}` — PDF ⏳ endpoint candidato; falta confirmar download real de um boleto controlado
+5. `GET https://public.contaazul.com/payments/billing/charge/file/{id}` — PDF ✅ validado 29/09 com a Venda 2246 (boleto de teste, R$ 100). `{id}` é o **id da solicitação de cobrança** (`parcelas/{id}.solicitacoes_cobrancas[0].id`, o mesmo `id` devolvido por `/cobranca/{id}`). O `id_referencia` da fatura (o da URL `faturas.contaazul.com/#/fatura/visualizar/...`) dá HTTP 500. Endpoint público (sem token) e não documentado — pode mudar sem aviso.
 
 ## Questor Zen
 - API pública (Postman): https://documenter.getpostman.com/view/19136635/UyxhonL3
@@ -34,9 +34,9 @@ Fluxo Authorization Code (Cognito). Rotas no `server/` (`src/contaazul.ts` + `in
 5. `getValidAccessToken` renova sozinho quando faltam <60s (grant `refresh_token`).
 6. `GET /oauth/contaazul/status` informa se está conectado.
 
-Endpoints/escopos são via env (default = Cognito):
-- authorize `https://auth.contaazul.com/oauth2/authorize`
-- token `https://auth.contaazul.com/oauth2/token`
+Endpoints/escopos são via env (defaults = doc oficial):
+- authorize `https://login.contaazul.com/#/oauth/authorize` (doc oficial atual; o portal de devs gera essa URL)
+- token `https://api-v2.contaazul.com/oauth/token` — Basic `client_id:client_secret` no header, **sem** `client_id` no body (doc: /changecode e /renewingaccesstoken). ⚠️ `auth.contaazul.com` era do portal antigo (chat de maio) — não usar.
 - scope `openid profile aws.cognito.signin.user.admin` · API base `https://api-v2.contaazul.com`
 
 Tokens persistidos em arquivo JSON gitignored (`server/src/tokenStore.ts`,
