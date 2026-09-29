@@ -32,6 +32,8 @@ services:
       CA_SCOPE: "${CA_SCOPE:-openid profile aws.cognito.signin.user.admin}"
       CA_API_BASE: "${CA_API_BASE:-https://api-v2.contaazul.com}"
       CA_PUBLIC_BASE: "${CA_PUBLIC_BASE:-https://public.contaazul.com}"
+      ZEN_BASE_URL: "${ZEN_BASE_URL:-https://assejurc.app.questorpublico.com.br}"
+      ZEN_API_TOKEN: "${ZEN_API_TOKEN:-}"
       CA_TOKENS_PATH: "/data/.tokens.json"
       DB_PATH: "/data/eron.db"
       TOKEN_ENC_KEY: "${TOKEN_ENC_KEY:-}"
