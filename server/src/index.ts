@@ -8,6 +8,7 @@ import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { authStatus, buildAuthorizeUrl, disconnect, exchangeCode, generatePkce, isConfigured } from "./contaazul.js";
 import { log } from "./logger.js";
+import { DEMO_MODE } from "./mode.js";
 import { sendAlert } from "./notify.js";
 import { startScheduler } from "./scheduler.js";
 import { store } from "./store.js";
@@ -59,8 +60,8 @@ app.get("/oauth/contaazul/start", (_req, res) => {
 });
 
 app.get("/oauth/contaazul/callback", async (req: Request, res: Response) => {
-  const { code, state, error, error_description: errorDescription } = req.query as Record<string, string>;
-  if (error) return res.status(400).send(page("Autorizacao recusada", `${error} — ${errorDescription ?? ""}`, false));
+  const { code, state, error } = req.query as Record<string, string>;
+  if (error) return res.status(400).send(page("Autorizacao recusada", "Reinicie a conexao e tente novamente.", false));
   if (!code || !state) return res.status(400).send(page("Callback invalido", "Faltam 'code' ou 'state'.", false));
   purgeExpired();
   const entry = pending.get(state);
@@ -111,10 +112,19 @@ app.get("/settings", (_req, res) => ok(res, store.getSettings()));
 app.post("/settings", (req, res) => {
   const parsed = SettingsSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "settings invalido" });
+  if (!DEMO_MODE && parsed.data.autoRun === true) {
+    return res.status(503).json({ error: "INTEGRACAO_EM_HOMOLOGACAO", mensagem: "Envio automatico ainda nao disponivel." });
+  }
   res.json(store.setSettings(parsed.data));
 });
 
 app.post("/run", async (_req, res) => {
+  if (!DEMO_MODE) {
+    return res.status(503).json({
+      error: "INTEGRACAO_EM_HOMOLOGACAO",
+      mensagem: "O envio real de boletos ainda nao foi ativado. Nenhum documento foi publicado.",
+    });
+  }
   // Trava contra clique duplo / execucao concorrente (evita boleto duplicado).
   if (store.isRunning()) {
     return res.status(409).json({ error: "EXECUCAO_EM_ANDAMENTO", mensagem: "Ja existe uma execucao em andamento." });

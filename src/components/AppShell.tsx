@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAsync } from "../lib/useAsync";
-import { getQuarantine } from "../api/client";
+import { getQuarantine, publishingSimulated } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeContext";
 import { BottomNav } from "./BottomNav";
@@ -190,8 +190,11 @@ export function AppShell() {
           </div>
           <div className="flex items-center gap-3 text-xs text-fg-muted">
             <span className="flex items-center gap-2" aria-live="polite">
-              <span className="h-2 w-2 animate-breathe rounded-full bg-flow" aria-hidden />
-              Servico ativo
+              <span
+                className={`h-2 w-2 rounded-full ${publishingSimulated ? "bg-warn" : "animate-breathe bg-flow"}`}
+                aria-hidden
+              />
+              {publishingSimulated ? "Modo demonstracao" : "Servico ativo"}
             </span>
             <ThemeToggle className="hidden md:grid" />
             <button onClick={handleLogout} className="hover:text-fg md:hidden">
@@ -199,6 +202,12 @@ export function AppShell() {
             </button>
           </div>
         </header>
+
+        {publishingSimulated && (
+          <div role="status" className="border-b border-warn/30 bg-warn/10 px-5 py-3 text-sm text-warn md:px-8">
+            Dados de demonstracao. O botao Ativar simula a publicacao; nenhum boleto e enviado ao Questor Zen.
+          </div>
+        )}
 
         <main className="flex-1 px-5 py-6 pb-24 md:px-8 md:py-8 md:pb-8">
           <Outlet />

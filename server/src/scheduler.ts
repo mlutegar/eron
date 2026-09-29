@@ -8,6 +8,7 @@
 //   4. marca a janela no store
 import { authStatus, contaAzul } from "./contaazul.js";
 import { log } from "./logger.js";
+import { DEMO_MODE } from "./mode.js";
 import { sendAlert } from "./notify.js";
 import { store } from "./store.js";
 
@@ -43,7 +44,7 @@ async function runCycle(now: Date): Promise<void> {
     // TODO(proximo passo): para cada novo -> detalhe/status -> PDF -> upload e-Doc Zen -> store.
 
     // Modo automatico (opcional): publica os pendentes sem depender do botao "Ativar".
-    if (store.getSettings().autoRun && !store.isRunning()) {
+    if (DEMO_MODE && store.getSettings().autoRun && !store.isRunning()) {
       const r = store.runSync(now);
       log.info("auto-run concluido", { subiram: r.subiram, naoSubiram: r.naoSubiram });
       if (r.naoSubiram > 0) {

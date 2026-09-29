@@ -11,12 +11,12 @@ Conta Azul (OAuth2)  ──►  Integrador (Node/Railway)  ──►  Questor Ze
                              PostgreSQL (dedup + log)
 ```
 
-## Endpoints Conta Azul (validados)
+## Endpoints Conta Azul (identificados; validar na conta conectada)
 1. OAuth2 — autenticação ✅
 2. `GET /v1/financeiro/eventos-financeiros/contas-a-receber/buscar` — parcelas ✅
 3. `GET /v1/financeiro/eventos-financeiros/parcelas/{id}` — detalhe + id cobrança ✅
 4. `GET /v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/{id}` — status ✅
-5. `GET https://public.contaazul.com/payments/billing/charge/file/{id}` — PDF ✅
+5. `GET https://public.contaazul.com/payments/billing/charge/file/{id}` — PDF ⏳ endpoint candidato; falta confirmar download real de um boleto controlado
 
 ## Questor Zen
 - API pública (Postman): https://documenter.getpostman.com/view/19136635/UyxhonL3

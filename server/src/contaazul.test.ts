@@ -9,9 +9,11 @@ process.env.CA_CLIENT_ID = "test-client";
 process.env.CA_CLIENT_SECRET = "test-secret";
 process.env.CA_REDIRECT_URI = "http://localhost:3001/oauth/contaazul/callback";
 process.env.CA_TOKENS_PATH = join(mkdtempSync(join(tmpdir(), "eron-tok-")), ".tokens.json");
+delete process.env.CA_AUTHORIZE_URL;
+delete process.env.CA_TOKEN_URL;
 delete process.env.TOKEN_ENC_KEY;
 
-const { buildAuthorizeUrl, generatePkce, exchangeCode, getValidAccessToken, refreshAccessToken, authStatus, disconnect } = await import("./contaazul.js");
+const { buildAuthorizeUrl, generatePkce, exchangeCode, getValidAccessToken, refreshAccessToken, authStatus, disconnect, contaAzul } = await import("./contaazul.js");
 
 function tokenResponse(body: Record<string, unknown>, status = 200) {
   return {
@@ -30,11 +32,14 @@ describe("contaazul OAuth", () => {
   it("buildAuthorizeUrl inclui params e PKCE S256", () => {
     const { challenge } = generatePkce();
     const url = new URL(buildAuthorizeUrl("st4te", challenge));
-    expect(url.searchParams.get("response_type")).toBe("code");
-    expect(url.searchParams.get("client_id")).toBe("test-client");
-    expect(url.searchParams.get("state")).toBe("st4te");
-    expect(url.searchParams.get("code_challenge")).toBe(challenge);
-    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    const params = new URLSearchParams(url.hash.split("?")[1]);
+    expect(url.origin).toBe("https://login.contaazul.com");
+    expect(url.hash.startsWith("#/oauth/authorize?")).toBe(true);
+    expect(params.get("response_type")).toBe("code");
+    expect(params.get("client_id")).toBe("test-client");
+    expect(params.get("state")).toBe("st4te");
+    expect(params.get("code_challenge")).toBe(challenge);
+    expect(params.get("code_challenge_method")).toBe("S256");
   });
 
   it("generatePkce gera verifier/challenge diferentes a cada chamada", () => {
@@ -45,10 +50,11 @@ describe("contaazul OAuth", () => {
   });
 
   it("exchangeCode persiste tokens e marca conectado", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       tokenResponse({ access_token: "A1", refresh_token: "R1", expires_in: 3600, token_type: "Bearer", scope: "openid" }),
     );
     const tok = await exchangeCode("code123", "verifier");
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api-v2.contaazul.com/oauth/token");
     expect(tok.accessToken).toBe("A1");
     expect(tok.refreshToken).toBe("R1");
     expect(authStatus().connected).toBe(true);
@@ -71,5 +77,27 @@ describe("contaazul OAuth", () => {
   it("propaga erro do token endpoint (4xx nao vira sucesso)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(tokenResponse({ error: "invalid_grant" }, 400));
     await expect(exchangeCode("bad", "v")).rejects.toThrow(/respondeu 400/);
+  });
+
+  it("baixa apenas PDF verdadeiro, usando o id da cobranca e sem seguir redirecionamentos", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    fetchMock.mockResolvedValueOnce(tokenResponse({ access_token: "A1", refresh_token: "R1", expires_in: 3600 }));
+    await exchangeCode("code", "verifier");
+    fetchMock.mockResolvedValueOnce(new Response(Buffer.from("%PDF-1.7\nconteudo"), {
+      headers: { "Content-Type": "application/pdf" },
+    }));
+    const pdf = await contaAzul.baixarPdfBoleto("cobranca-123");
+    expect(Buffer.from(pdf).toString()).toContain("%PDF-1.7");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://public.contaazul.com/payments/billing/charge/file/cobranca-123");
+    expect((fetchMock.mock.calls[1][1] as RequestInit).redirect).toBe("manual");
+    expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer A1" });
+  });
+
+  it("recusa pagina HTML apresentada como boleto", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    fetchMock.mockResolvedValueOnce(tokenResponse({ access_token: "A1", refresh_token: "R1", expires_in: 3600 }));
+    await exchangeCode("code", "verifier");
+    fetchMock.mockResolvedValueOnce(new Response("<html>login</html>", { status: 200 }));
+    await expect(contaAzul.baixarPdfBoleto("cobranca-123")).rejects.toThrow("nao devolveu um PDF valido");
   });
 });

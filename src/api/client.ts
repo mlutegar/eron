@@ -34,6 +34,9 @@ import {
 const BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "";
 const TOKEN = import.meta.env.VITE_API_TOKEN ?? "";
 export const usingMock = BASE === "";
+// O backend atual tambem simula o upload no Zen. Mantenha o aviso na UI ate
+// a integracao real estar implementada e homologada.
+export const publishingSimulated = true;
 
 const delay = <T>(value: T, ms = 260): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));

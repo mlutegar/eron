@@ -8,7 +8,10 @@
 - [ ] 🔑 **Concluir o consentimento OAuth** — depende do **2FA** da conta CA. Abrir `/oauth/contaazul/start`, logar em `rio@assejurc.com.br`, aprovar 2FA e consentir. Ver [[Credenciais]]
 - [ ] Registrar `redirect_uri` no portal de devs (localhost + URL do tunnel)
 - [ ] Confirmar escopos necessários e os filtros da busca de contas a receber
-- [ ] ⏳ Validar upload real no Zen (e-Doc) — endpoint `POST /api/edoc/...` ([[Arquitetura]])
+- [x] Cliente e-Doc preparado conforme API do Zen: upload do PDF + cadastro do documento, com testes simulados (`server/src/zen.ts`)
+- [ ] ⏳ Validar upload real no Zen com empresa e boleto de teste escolhidos — endpoints `/api/v1/{token}/upload/{arquivo}` e `/api/v1/{token}/documentos`
+- [x] Token Zen validado em 29/09: consulta de categorias da API respondeu HTTP 200 e encontrou “Boleto” (sem upload)
+- [ ] Conectar a conta de desenvolvimento da Conta Azul por OAuth, confirmar acesso aos boletos/PDFs de teste e ligar o fluxo ao cliente Zen
 - [ ] Confirmar formato/limite de arquivo aceito no e-Doc do cliente
 - [ ] Migrar persistência de tokens para PostgreSQL (hoje arquivo JSON)
 - [ ] 🔁 Rotacionar o `client_secret` no portal (trafegou em texto no chat)

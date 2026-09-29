@@ -7,7 +7,7 @@
 //   4. getValidAccessToken() devolve token valido, renovando quando faltam <60s
 //      (com singleflight: um unico refresh concorrente por vez)
 //
-// Endpoints/escopos configuraveis por env (defaults = fluxo Cognito atual).
+// Endpoints/escopos configuraveis por env (defaults da documentacao Conta Azul).
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { fetchWithRetry } from "./http.js";
@@ -20,11 +20,12 @@ const env = (k: string, fallback = ""): string => process.env[k] ?? fallback;
 const CLIENT_ID = env("CA_CLIENT_ID");
 const CLIENT_SECRET = env("CA_CLIENT_SECRET");
 const REDIRECT_URI = env("CA_REDIRECT_URI", "http://localhost:3001/oauth/contaazul/callback");
-const AUTHORIZE_URL = env("CA_AUTHORIZE_URL", "https://auth.contaazul.com/oauth2/authorize");
-const TOKEN_URL = env("CA_TOKEN_URL", "https://auth.contaazul.com/oauth2/token");
+const AUTHORIZE_URL = env("CA_AUTHORIZE_URL", "https://login.contaazul.com/#/oauth/authorize");
+const TOKEN_URL = env("CA_TOKEN_URL", "https://api-v2.contaazul.com/oauth/token");
 const SCOPE = env("CA_SCOPE", "openid profile aws.cognito.signin.user.admin");
 const API_BASE = env("CA_API_BASE", "https://api-v2.contaazul.com");
 const PUBLIC_BASE = env("CA_PUBLIC_BASE", "https://public.contaazul.com");
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 export class ContaAzulError extends Error {
   constructor(
@@ -67,7 +68,7 @@ export function buildAuthorizeUrl(state: string, codeChallenge?: string): string
     params.set("code_challenge", codeChallenge);
     params.set("code_challenge_method", "S256");
   }
-  return `${AUTHORIZE_URL}?${params.toString()}`;
+  return `${AUTHORIZE_URL}${AUTHORIZE_URL.includes("?") ? "&" : "?"}${params.toString()}`;
 }
 
 const TokenResponseSchema = z.object({
@@ -242,8 +243,35 @@ export const contaAzul = {
     return apiGet(`/v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/${encodeURIComponent(idCobranca)}`, ContaReceberSchema);
   },
 
-  /** 4) URL do PDF do boleto (endpoint publico). */
+  /** 4) URL candidata do PDF do boleto (ainda nao validada com cobranca real). */
   pdfBoletoUrl(idCobranca: string): string {
     return `${PUBLIC_BASE}/payments/billing/charge/file/${encodeURIComponent(idCobranca)}`;
+  },
+
+  /**
+   * Le um boleto para homologacao. O endpoint de PDF ainda precisa ser
+   * confirmado com uma cobranca real; nunca retorna HTML como se fosse PDF.
+   */
+  async baixarPdfBoleto(idCobranca: string): Promise<Uint8Array> {
+    if (!/^[A-Za-z0-9-]+$/.test(idCobranca)) {
+      throw new ContaAzulError("id da cobranca invalido");
+    }
+    const token = await getValidAccessToken();
+    const response = await fetch(this.pdfBoletoUrl(idCobranca), {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/pdf" },
+      redirect: "manual", // nao encaminha o token a outro host
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) {
+      throw new ContaAzulError(`download do boleto respondeu HTTP ${response.status}`, response.status);
+    }
+    const declaredSize = Number(response.headers.get("content-length"));
+    if (declaredSize > MAX_PDF_BYTES) throw new ContaAzulError("PDF maior que 20 MB");
+    const pdf = new Uint8Array(await response.arrayBuffer());
+    if (pdf.byteLength === 0 || pdf.byteLength > MAX_PDF_BYTES ||
+        new TextDecoder().decode(pdf.subarray(0, 5)) !== "%PDF-") {
+      throw new ContaAzulError("A Conta Azul nao devolveu um PDF valido");
+    }
+    return pdf;
   },
 };

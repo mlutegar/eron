@@ -4,7 +4,7 @@ import { DataTable, type Column } from "../components/DataTable";
 import { BoletoDrawer } from "../components/BoletoDrawer";
 import { useToast } from "../components/Toast";
 import { useAsync } from "../lib/useAsync";
-import { getLastRun, getPending, getSettings, runSync, setSettings } from "../api/client";
+import { getLastRun, getPending, getSettings, publishingSimulated, runSync, setSettings } from "../api/client";
 import { brl, dateTime } from "../lib/format";
 import { downloadCsv } from "../lib/csv";
 import type { Boleto, RunItem, RunResult } from "../types/api";
@@ -154,15 +154,15 @@ export function Activate() {
       {/* Ativador */}
       <section className="hairline rounded-2xl bg-ink-800 px-6 py-10 text-center">
         <div className="mb-2 text-xs font-medium uppercase tracking-widest text-fg-faint">
-          {running ? "Processando…" : "Robo pronto"}
+          {running ? "Processando…" : publishingSimulated ? "Simulador pronto" : "Robo pronto"}
         </div>
         <h1 className="font-display text-2xl font-semibold text-fg">
-          Publicar boletos no Questor Zen
+          {publishingSimulated ? "Simular publicacao de boletos" : "Publicar boletos no Questor Zen"}
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-fg-muted">
           {running
             ? progress
-              ? `Enviando ao e-Doc do Zen… (${progress.total} pendente(s))`
+              ? `${publishingSimulated ? "Simulando envio" : "Enviando ao e-Doc do Zen"}… (${progress.total} pendente(s))`
               : "Varrendo os boletos pendentes…"
             : pendingCount > 0
               ? `${pendingCount} boleto(s) pendente(s) para processar.`
@@ -191,9 +191,10 @@ export function Activate() {
             type="checkbox"
             checked={autoRun}
             onChange={toggleAuto}
+            disabled={publishingSimulated}
             className="h-4 w-4 accent-flow"
           />
-          Rodar automaticamente a cada janela do agendador
+          {publishingSimulated ? "Modo automatico disponivel apos a integracao real" : "Rodar automaticamente a cada janela do agendador"}
         </label>
       </section>
 
