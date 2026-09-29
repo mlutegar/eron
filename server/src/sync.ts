@@ -23,6 +23,7 @@ export interface CaPort {
   buscarContasReceber(query: Record<string, string | number>): Promise<unknown>;
   detalheParcela(idParcela: string): Promise<unknown>;
   detalheVenda(idVenda: string): Promise<unknown>;
+  detalhePessoa(idPessoa: string): Promise<unknown>;
   statusCobranca(idCobranca: string): Promise<unknown>;
   baixarPdfBoleto(idCobranca: string): Promise<Uint8Array>;
 }
@@ -68,8 +69,13 @@ interface ItemBusca {
 }
 
 interface VendaDetalhe {
-  cliente?: { nome?: string; documento?: string };
+  cliente?: { uuid?: string; nome?: string; documento?: string | null; tipo_pessoa?: string };
   venda?: { id?: string; numero?: number };
+}
+
+interface PessoaDetalhe {
+  nome?: string;
+  documento?: string | null;
 }
 
 const TAMANHO_PAGINA = 100;
@@ -191,9 +197,9 @@ export class SyncEngine {
     let clienteNome = base.cliente_nome;
     if (!documento && base.venda_uuid) {
       try {
-        const venda = (await this.deps.ca.detalheVenda(base.venda_uuid)) as VendaDetalhe;
-        documento = (venda.cliente?.documento ?? "").replace(/\D/g, "") || null;
-        clienteNome = venda.cliente?.nome ?? clienteNome;
+        const r = await this.obterDocumentoDaVenda(base.venda_uuid);
+        documento = r.documento;
+        clienteNome = r.nome ?? clienteNome;
       } catch (err) {
         log.warn("nao foi possivel obter o CPF/CNPJ na deteccao; fica para a entrega", { idParcela: item.id, err: String(err) });
       }
@@ -219,6 +225,21 @@ export class SyncEngine {
       documento_zen_id: null, arquivo_zen_id: null, cliente_zen_id: null, sincronizado_em: null, ...patch,
     }, ts);
     this.deps.db.registrarEvento(item.id, "REGISTRADO", `Boleto registrado na Conta Azul (cobranca ${cobranca.id}). Aguardando publicacao.`, ts);
+  }
+
+  /**
+   * CPF/CNPJ do cliente de uma venda. A venda traz o documento de pessoa fisica;
+   * para pessoa juridica vem null e o CNPJ esta no cadastro da pessoa (/v1/pessoas/{id}).
+   */
+  private async obterDocumentoDaVenda(vendaUuid: string): Promise<{ documento: string | null; nome: string | null }> {
+    const venda = (await this.deps.ca.detalheVenda(vendaUuid)) as VendaDetalhe;
+    const nome = venda.cliente?.nome ?? null;
+    let documento = (venda.cliente?.documento ?? "").replace(/\D/g, "");
+    if (!documento && venda.cliente?.uuid) {
+      const pessoa = (await this.deps.ca.detalhePessoa(venda.cliente.uuid)) as PessoaDetalhe;
+      documento = (pessoa.documento ?? "").replace(/\D/g, "");
+    }
+    return { documento: documento || null, nome };
   }
 
   // ------------------------------------------------------------------ entregar
@@ -271,10 +292,10 @@ export class SyncEngine {
       let clienteNome = row.cliente_nome;
       if (!documento) {
         if (!row.venda_uuid) throw new Error("parcela sem venda de origem; nao ha como obter o CPF/CNPJ");
-        const venda = (await this.deps.ca.detalheVenda(row.venda_uuid)) as VendaDetalhe;
-        documento = (venda.cliente?.documento ?? "").replace(/\D/g, "");
-        clienteNome = venda.cliente?.nome ?? clienteNome;
-        if (!documento) throw new Error("venda sem CPF/CNPJ do cliente");
+        const r = await this.obterDocumentoDaVenda(row.venda_uuid);
+        documento = r.documento;
+        clienteNome = r.nome ?? clienteNome;
+        if (!documento) throw new Error("cliente da venda sem CPF/CNPJ na Conta Azul");
         this.deps.db.atualizarParcela(row.id_parcela, { documento, cliente_nome: clienteNome }, ts);
       }
       // 2) Cobranca ainda registrada?

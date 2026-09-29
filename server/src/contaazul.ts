@@ -246,6 +246,11 @@ export const contaAzul = {
     return apiGet(`/v1/venda/${encodeURIComponent(idVenda)}`, ContaReceberSchema);
   },
 
+  /** 2c) Cadastro da pessoa (cliente). Para PJ, a venda vem com documento null; o CNPJ esta aqui. */
+  detalhePessoa(idPessoa: string): Promise<unknown> {
+    return apiGet(`/v1/pessoas/${encodeURIComponent(idPessoa)}`, ContaReceberSchema);
+  },
+
   /** 3) Status da cobranca. */
   statusCobranca(idCobranca: string): Promise<unknown> {
     return apiGet(`/v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/${encodeURIComponent(idCobranca)}`, ContaReceberSchema);

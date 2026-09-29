@@ -83,7 +83,8 @@ npm run usuario -- remover heron
   (data-hora ISO), `status=EM_ABERTO`, `pagina`, `tamanho_pagina`.
 - `GET /v1/financeiro/eventos-financeiros/parcelas/{id}` →
   `metodo_pagamento`, `solicitacoes_cobrancas[].id` (a cobrança), `status_solicitacao_cobranca`.
-- `GET /v1/venda/{id}` → `cliente.documento` (CPF/CNPJ).
+- `GET /v1/venda/{id}` → `cliente.documento` só para pessoa física; para PJ vem `null`.
+- `GET /v1/pessoas/{cliente.uuid}` → `documento` (CNPJ). (`/v1/pessoa/...` no singular dá 405.)
 - `GET /v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/{id}` → `{ id, url, status }`.
 - PDF: `GET https://public.contaazul.com/payments/billing/charge/file/{id da cobrança}`,
   público, sem token, não documentado (pode mudar sem aviso).

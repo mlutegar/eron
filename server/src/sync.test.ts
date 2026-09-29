@@ -41,7 +41,13 @@ function fakeCa(parcelas: ReturnType<typeof parcelaCA>[]): CaPort & { chamadas: 
     },
     async detalheVenda(id) {
       chamadas.push(`venda ${id}`);
-      return { cliente: { nome: "Cliente Teste", documento: "413.239.838-21" }, venda: { id, numero: 100 } };
+      // venda-pj simula pessoa juridica: a CA devolve documento null na venda.
+      if (id.endsWith("-pj")) return { cliente: { uuid: "pessoa-pj", nome: "Empresa PJ LTDA", documento: null, tipo_pessoa: "Jurídica" }, venda: { id, numero: 200 } };
+      return { cliente: { uuid: "pessoa-pf", nome: "Cliente Teste", documento: "413.239.838-21" }, venda: { id, numero: 100 } };
+    },
+    async detalhePessoa(id) {
+      chamadas.push(`pessoa ${id}`);
+      return id === "pessoa-pj" ? { nome: "Empresa PJ LTDA", documento: "31966936000103" } : { nome: "Cliente Teste", documento: "41323983821" };
     },
     async statusCobranca(id) {
       chamadas.push(`cobranca ${id}`);
@@ -141,6 +147,14 @@ describe("SyncEngine — deteccao", () => {
     expect(db.getParcela("contrato")?.emitido_em).toBe("2026-10-03T00:00:00");
     const r = await engine.entregar({ manual: true });
     expect(r.subiram).toBe(1); // entrou apesar da parcela ser de maio
+  });
+
+  it("pessoa juridica: CNPJ vem do cadastro da pessoa quando a venda nao traz", async () => {
+    const { engine, db, ca } = engineCom([parcelaCA("emp-pj")]);
+    await engine.detectar();
+    expect(db.getParcela("emp-pj")?.documento).toBe("31966936000103");
+    expect(db.getParcela("emp-pj")?.cliente_nome).toBe("Empresa PJ LTDA");
+    expect(ca.chamadas).toContain("pessoa pessoa-pj");
   });
 
   it("deteccao nunca publica nada", async () => {
