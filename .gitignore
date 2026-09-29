@@ -12,3 +12,6 @@ tsconfig.tsbuildinfo
 .tokens.json
 *.tokens.json
 server/.tokens.json
+*.db
+*.db-wal
+*.db-shm

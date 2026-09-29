@@ -1,7 +1,7 @@
 # IAZAN Sync — Backend integrador
 
-API que serve o contrato consumido pelo dashboard (`src/api/client.ts`).
-Fase atual: dados em memoria (`src/store.ts`) + agendador stub (`src/scheduler.ts`).
+API que serve o contrato consumido pelo dashboard (`src/api/client.ts`), o fluxo
+OAuth da Conta Azul e o **robô** que publica boletos no e-Doc do Questor Zen.
 
 ## Rodar
 ```bash
@@ -9,69 +9,72 @@ npm install
 npm run dev     # tsx watch, porta 3001
 npm run build   # compila para dist/
 npm start       # roda dist/index.js
-npm test        # vitest
+npm test        # vitest (Conta Azul e Zen simulados; nenhuma chamada de rede)
 ```
 
-## Verificar acesso ao Questor Zen
+Configuração em `server/.env` (ver `.env.example`). Estado persistido em SQLite
+(`DB_PATH`, padrão `.eron.db`; em produção `/data/eron.db` no volume Docker).
 
-Preencha `ZEN_BASE_URL` e `ZEN_API_TOKEN` em `server/.env` (arquivo ignorado pelo
-Git) e execute `npm run check:zen`. O comando faz somente uma consulta de leitura
-às categorias do Zen e informa se a categoria “Boleto” está disponível. Ele não
-envia documentos nem imprime o token.
+## Como o robô funciona (`src/sync.ts`)
 
-## Envio ao e-Doc preparado
+A cada `SYNC_INTERVAL_MIN` minutos (padrão 10) o agendador roda um ciclo:
 
-`src/zen.ts` implementa as duas etapas documentadas pela API do Zen: enviar o
-PDF (`/upload`) e registrar o documento (`/documentos`). Antes de enviar, consulta
-a categoria Boleto e confirma que o CNPJ corresponde ao cliente encontrado no
-Zen. O código valida PDF, vencimento e valor, e só considera publicado quando
-recebe o ID do documento. Os testes de `src/zen.test.ts` simulam todas as
-respostas: não fazem upload real.
+1. **Detectar** (24h, só leitura na Conta Azul): busca parcelas de contas a
+   receber alteradas nos últimos 10 dias (nunca antes da **data de corte**),
+   consulta o detalhe de cada parcela nova/alterada e guarda no banco:
+   - `REGISTRADO`: boleto bancário registrado, aguardando publicação;
+   - `IGNORADO`: sem boleto (pix, cartão, quitada, ou boleto compartilhado com
+     outra parcela). É reavaliada se a Conta Azul alterar a parcela.
+2. **Entregar** (só das 7h às 19h de Brasília, e só se `envioHabilitado` e
+   `autoRun` estiverem ligados): para cada parcela pronta, até `limitePorRodada`,
+   obtém o CPF/CNPJ pela venda, confirma a cobrança, baixa o PDF, localiza o
+   cliente no Zen e publica na pasta Boleto com valor e vencimento.
+3. **Falhas**: nova tentativa em 1h, 6h, 1 dia, 3, 7 e 30 dias (`QUARENTENA`);
+   na 7ª falha vira `ERRO` (definitiva) e dispara alerta.
 
-O cliente Zen **ainda não está ligado** a `POST /run` nem ao agendador. Para testar
-uma publicação de verdade, é preciso selecionar uma empresa de teste no Zen e
-um boleto de teste em PDF. Depois disso, falta ligar esse cliente ao ciclo da
-Conta Azul e persistir IDs e resultados para evitar duplicidades.
+Regras puras em `src/regras.ts`; banco em `src/db.ts`; leitura do painel em
+`src/store.ts`.
 
-## Conta Azul de desenvolvimento
+### Travas de segurança
+- `envioHabilitado=false` (padrão): **nada** é publicado, nem pelo botão Ativar.
+- `dataCorte`: só boletos emitidos a partir dela entram. Ao habilitar o envio sem
+  data de corte, ela vira o dia atual (nunca publicamos o passado por acidente).
+- `limitePorRodada` (padrão 20) e lock contra rodadas simultâneas.
+- Idempotência pelo id da parcela/cobrança no banco: um boleto nunca sobe duas
+  vezes, mesmo reiniciando o servidor. Um boleto que cobre várias parcelas sobe
+  uma vez só.
+- O botão **Ativar** (`POST /run`) roda uma rodada manual: ignora o horário e o
+  `autoRun`, mas respeita a chave geral, a data de corte e o limite.
 
-Um App de Desenvolvimento no portal da Conta Azul fornece `client_id`,
-`client_secret` e uma conta ERP temporária com dados fictícios. Para iniciar
-OAuth local, configure essas credenciais e uma `CA_REDIRECT_URI` registrada no
-portal. Os endpoints padrão deste projeto seguem a documentação atual da
-Conta Azul. A conexão e o acesso a PDFs ainda precisam ser validados na conta
-de desenvolvimento ou com uma unica cobranca controlada pelo cliente na conta
-real. Nenhum teste deve enviar cobrancas antigas em lote.
+Tudo isso é configurável em `GET/POST /settings`
+(`autoRun`, `envioHabilitado`, `dataCorte`, `limitePorRodada`, `destinatarios`).
 
-## Verificar um PDF sem enviar ao Zen
+## Scripts de apoio (a partir de `server/`, após `npm run build`)
 
-Depois de concluir OAuth e identificar o `id_cobranca` de um unico boleto de
-teste, execute a partir de `server/`:
+| Comando | O que faz |
+|---|---|
+| `npm run check:zen` | Consulta de leitura às categorias do Zen (valida o token). |
+| `npm run ca:get -- /v1/...` | GET autenticado na API da Conta Azul, imprime o JSON. |
+| `npm run ca:exchange -- "<url com ?code=>"` | Troca manual do código OAuth quando o redirect registrado não aponta para este servidor. |
+| `npm run probe:boleto -- <id da cobrança>` | Baixa o PDF de um boleto e salva em pasta temporária. Não chama o Zen. |
+| `npm run publicar:teste -- --parcela <id> --documento <cpf/cnpj> [--confirmar]` | Envio único e controlado de um boleto ao Zen. Sem `--confirmar`, só simula. |
 
-```bash
-npm run build
-npm run probe:boleto -- ID_DA_COBRANCA
-```
+## Conta Azul: o que foi validado na conta real (29/09/2026)
 
-O comando tenta o endpoint candidato da Conta Azul, exige que a resposta seja
-um PDF de verdade e salva o arquivo em um diretorio privado temporario. Nao
-chama o Zen, nao envia email e nao varre outras cobrancas. O endpoint ainda
-precisa ser confirmado com esse teste real.
+- OAuth: `login.contaazul.com/#/oauth/authorize` → `api-v2.contaazul.com/oauth/token`
+  (Basic `client_id:client_secret`); refresh automático confirmado.
+- `GET /v1/financeiro/eventos-financeiros/contas-a-receber/buscar` exige
+  `data_vencimento_de/ate`; aceita `data_alteracao_de/ate` e `data_criacao_de/ate`
+  (data-hora ISO), `status=EM_ABERTO`, `pagina`, `tamanho_pagina`.
+- `GET /v1/financeiro/eventos-financeiros/parcelas/{id}` →
+  `metodo_pagamento`, `solicitacoes_cobrancas[].id` (a cobrança), `status_solicitacao_cobranca`.
+- `GET /v1/venda/{id}` → `cliente.documento` (CPF/CNPJ).
+- `GET /v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/{id}` → `{ id, url, status }`.
+- PDF: `GET https://public.contaazul.com/payments/billing/charge/file/{id da cobrança}`,
+  público, sem token, não documentado (pode mudar sem aviso).
 
-Em producao, `POST /run` e a ativacao do modo automatico respondem 503 ate o
-ciclo real estar implementado. Os dados ficticios do painel sao carregados
-somente fora de producao.
+## Questor Zen
 
-## Endpoints
-- `GET /overview` · `GET /sync-logs` · `GET /boletos/:id/logs`
-- `GET /quarantine` · `POST /quarantine/:id/reprocess`
-- `GET /clients` · `GET /health`
-- `GET /healthz` — healthcheck do container (sempre publico)
-
-## Variaveis (ver `.env.example`)
-`PORT`, `API_TOKEN` (Bearer opcional), `ALLOWED_ORIGIN` (CORS), `SYNC_INTERVAL_MIN`.
-
-## Integracao real (proximo passo)
-Trocar `store.ts` por acesso ao PostgreSQL e `scheduler.ts` pelo ciclo real:
-autenticar Conta Azul -> buscar cobrancas -> baixar PDF -> chamar `ZenClient` ->
-gravar IDs, log e quarentena.
+`src/zen.ts` implementa `clientes/{cpf|cnpj}`, `categorias`, `upload/{arquivo}` e
+`documentos`. O Zen avisa por e-mail os **Usuários do Cliente** (logins do portal)
+quando um documento entra; o e-mail do cadastro no CRM não é usado para isso.

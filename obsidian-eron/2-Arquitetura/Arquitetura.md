@@ -44,8 +44,16 @@ Tokens persistidos em arquivo JSON gitignored (`server/src/tokenStore.ts`,
 ⚠️ `redirect_uri` deve casar EXATAMENTE com o registrado no portal de devs
 (localhost em dev, URL do tunnel em prod — ver [[Deploy]]). Credenciais: [[Credenciais]].
 
+## Motor do robô (`server/src/sync.ts`, 29/09)
+- **Detectar** (24h, só leitura): `contas-a-receber/buscar` filtrando `data_alteracao_de/ate` (últimos 10 dias, nunca antes da **data de corte**) → `parcelas/{id}` → `REGISTRADO` (boleto registrado) ou `IGNORADO` (pix/cartão/quitada/boleto compartilhado; reavaliada se a CA alterar).
+- **Entregar** (7h–19h Brasília; exige `envioHabilitado` + `autoRun`, ou botão Ativar): venda → CPF/CNPJ → cobrança REGISTRADO → PDF → `ZenClient.publishBoleto` → `SINCRONIZADO`.
+- **Falhas**: 1h, 6h, 1d, 3d, 7d, 30d (`QUARENTENA`); 7ª = `ERRO` definitivo + alerta. Zen instável = 5 falhas em 10 min.
+- **Banco**: SQLite (`node:sqlite`) em `/data/eron.db` — tabelas `parcelas`, `eventos`, `config`. Idempotência por id da parcela/cobrança; um boleto que cobre várias parcelas sobe uma vez.
+- **Travas**: `envioHabilitado=false` por padrão (nada sai, nem manual); `dataCorte` vira hoje ao habilitar; `limitePorRodada=20`; lock.
+- Data de emissão do boleto = `notificao_cobranca.enviado_em` (a criação da parcela não serve: contratos recorrentes criam parcelas meses antes).
+
 ## Match de cliente
-CNPJ da CA → empresa no Zen (mapeamento inicial + fallback quarentena).
+CPF/CNPJ do cliente da venda (`/v1/venda/{id}.cliente.documento`) → `clientes/{documento}` no Zen. Sem cadastro → quarentena com novas tentativas.
 
 ## Stack
-Node.js + TypeScript · PostgreSQL · Railway · Sentry + healthcheck · Front React+Vite.
+Node.js 24 + TypeScript · SQLite (`node:sqlite`) · Docker na VPS (Cloudflare Tunnel) · Front React+Vite.

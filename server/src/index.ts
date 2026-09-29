@@ -1,23 +1,29 @@
 // Backend integrador IAZAN (Conta Azul -> Questor Zen).
-// Serve o contrato consumido pelo dashboard (src/api/client.ts).
-// Fase atual: dados em memoria (store) + agendador stub. Estrutura pronta
-// para trocar o store por PostgreSQL e o scheduler pela integracao real.
+// Serve o contrato consumido pelo dashboard (src/api/client.ts), o fluxo OAuth
+// da Conta Azul e o agendador do robo. Estado persistido em SQLite (db.ts).
 import "dotenv/config";
 import { randomBytes } from "node:crypto";
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { authStatus, buildAuthorizeUrl, disconnect, exchangeCode, generatePkce, isConfigured } from "./contaazul.js";
+import { authStatus, buildAuthorizeUrl, contaAzul, disconnect, exchangeCode, generatePkce, isConfigured } from "./contaazul.js";
+import { Db } from "./db.js";
 import { log } from "./logger.js";
-import { DEMO_MODE } from "./mode.js";
 import { sendAlert } from "./notify.js";
 import { startScheduler } from "./scheduler.js";
-import { store } from "./store.js";
+import { createStore } from "./store.js";
+import { SyncEngine, SyncError } from "./sync.js";
 import { SettingsSchema } from "./types.js";
+import { zenFromEnv } from "./zen.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const API_TOKEN = process.env.API_TOKEN ?? "";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? "*";
-const INTERVAL_MIN = Number(process.env.SYNC_INTERVAL_MIN ?? 15);
+const INTERVAL_MIN = Number(process.env.SYNC_INTERVAL_MIN ?? 10);
+const DB_PATH = process.env.DB_PATH ?? ".eron.db";
+
+const db = Db.open(DB_PATH);
+const engine = new SyncEngine({ ca: contaAzul, zen: () => zenFromEnv(), db, alert: sendAlert });
+const store = createStore(db, engine, INTERVAL_MIN);
 
 const app = express();
 app.use(express.json());
@@ -111,25 +117,14 @@ app.get("/last-run", (_req, res) => ok(res, store.getLastRun()));
 app.get("/settings", (_req, res) => ok(res, store.getSettings()));
 app.post("/settings", (req, res) => {
   const parsed = SettingsSchema.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "settings invalido" });
-  if (!DEMO_MODE && parsed.data.autoRun === true) {
-    return res.status(503).json({ error: "INTEGRACAO_EM_HOMOLOGACAO", mensagem: "Envio automatico ainda nao disponivel." });
-  }
-  res.json(store.setSettings(parsed.data));
+  if (!parsed.success) return res.status(400).json({ error: "settings invalido", issues: parsed.error.issues });
+  const next = store.setSettings(parsed.data);
+  log.info("settings alterados", { ...next, destinatarios: next.destinatarios.length });
+  res.json(next);
 });
 
 app.post("/run", async (_req, res) => {
-  if (!DEMO_MODE) {
-    return res.status(503).json({
-      error: "INTEGRACAO_EM_HOMOLOGACAO",
-      mensagem: "O envio real de boletos ainda nao foi ativado. Nenhum documento foi publicado.",
-    });
-  }
-  // Trava contra clique duplo / execucao concorrente (evita boleto duplicado).
-  if (store.isRunning()) {
-    return res.status(409).json({ error: "EXECUCAO_EM_ANDAMENTO", mensagem: "Ja existe uma execucao em andamento." });
-  }
-  // Sessao do banco/Conta Azul: se configurada e nao conectada, orienta o operador.
+  // Sessao da Conta Azul: se configurada e nao conectada, orienta o operador.
   if (isConfigured() && !authStatus().connected) {
     return res.status(503).json({
       error: "CA_NAO_CONECTADA",
@@ -137,7 +132,7 @@ app.post("/run", async (_req, res) => {
     });
   }
   try {
-    const result = store.runSync();
+    const result = await store.runSync();
     if (result.naoSubiram > 0) {
       await sendAlert(
         "run-parcial",
@@ -145,11 +140,12 @@ app.post("/run", async (_req, res) => {
         `subiram=${result.subiram} naoSubiram=${result.naoSubiram} valor=${result.valorPublicado}`,
       );
     }
-    log.info("execucao do robo concluida", { subiram: result.subiram, naoSubiram: result.naoSubiram });
+    log.info("execucao manual do robo concluida", { subiram: result.subiram, naoSubiram: result.naoSubiram });
     ok(res, result);
   } catch (err) {
-    if (String(err).includes("EXECUCAO_EM_ANDAMENTO")) {
-      return res.status(409).json({ error: "EXECUCAO_EM_ANDAMENTO" });
+    if (err instanceof SyncError) {
+      const status = err.code === "EXECUCAO_EM_ANDAMENTO" ? 409 : 503;
+      return res.status(status).json({ error: err.code, mensagem: err.message });
     }
     throw err;
   }
@@ -163,7 +159,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "erro interno" });
 });
 
-startScheduler(INTERVAL_MIN);
+startScheduler(INTERVAL_MIN, engine, store);
 app.listen(PORT, () => {
-  log.info("iazan-sync-api ouvindo", { port: PORT, auth: API_TOKEN ? "bearer" : "aberta" });
+  log.info("iazan-sync-api ouvindo", { port: PORT, auth: API_TOKEN ? "bearer" : "aberta", db: DB_PATH, settings: engine.getSettings() });
 });

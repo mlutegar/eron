@@ -241,6 +241,11 @@ export const contaAzul = {
     return apiGet(`/v1/financeiro/eventos-financeiros/parcelas/${encodeURIComponent(idParcela)}`, ContaReceberSchema);
   },
 
+  /** 2b) Detalhe da venda (traz cliente.documento = CPF/CNPJ). */
+  detalheVenda(idVenda: string): Promise<unknown> {
+    return apiGet(`/v1/venda/${encodeURIComponent(idVenda)}`, ContaReceberSchema);
+  },
+
   /** 3) Status da cobranca. */
   statusCobranca(idCobranca: string): Promise<unknown> {
     return apiGet(`/v1/financeiro/eventos-financeiros/contas-a-receber/cobranca/${encodeURIComponent(idCobranca)}`, ContaReceberSchema);
