@@ -13,10 +13,10 @@ const stateLabel: Record<HealthState, string> = {
 };
 
 export function SystemStatus() {
-  const { data, loading, error } = useAsync(getHealth);
+  const { data, loading, error, refetch } = useAsync(getHealth, [], { refreshMs: 60_000 });
 
-  if (loading) return <Loading />;
-  if (error || !data) return <ErrorState message={error ?? "Sem dados."} />;
+  if (loading && !data) return <Loading />;
+  if (error || !data) return <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />;
 
   const geral: HealthState = data.servicos.some((s) => s.estado === "FALHA")
     ? "FALHA"

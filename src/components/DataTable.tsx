@@ -13,9 +13,10 @@ interface DataTableProps<T> {
   rows: T[];
   rowKey: (row: T) => string;
   empty?: ReactNode;
+  onRowClick?: (row: T) => void;
 }
 
-export function DataTable<T>({ columns, rows, rowKey, empty }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, rowKey, empty, onRowClick }: DataTableProps<T>) {
   if (rows.length === 0) {
     return (
       <div className="hairline rounded-xl bg-ink-800 px-6 py-16 text-center text-fg-muted">
@@ -44,7 +45,18 @@ export function DataTable<T>({ columns, rows, rowKey, empty }: DataTableProps<T>
           {rows.map((row) => (
             <tr
               key={rowKey(row)}
-              className="border-b border-line/60 last:border-0 transition-colors hover:bg-ink-700/50"
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter") onRowClick(row);
+                    }
+                  : undefined
+              }
+              className={`border-b border-line/60 last:border-0 transition-colors hover:bg-ink-700/50 ${
+                onRowClick ? "cursor-pointer" : ""
+              }`}
             >
               {columns.map((c) => (
                 <td

@@ -1,15 +1,30 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { SyncLog } from "./pages/SyncLog";
 import { Quarantine } from "./pages/Quarantine";
 import { ClientMapping } from "./pages/ClientMapping";
 import { SystemStatus } from "./pages/SystemStatus";
 
+function ProtectedLayout() {
+  const { authenticated } = useAuth();
+  if (!authenticated) return <Navigate to="/login" replace />;
+  return <AppShell />;
+}
+
+function LoginRoute() {
+  const { authenticated } = useAuth();
+  if (authenticated) return <Navigate to="/" replace />;
+  return <Login />;
+}
+
 const router = createBrowserRouter([
+  { path: "/login", element: <LoginRoute /> },
   {
     path: "/",
-    element: <AppShell />,
+    element: <ProtectedLayout />,
     children: [
       { index: true, element: <Overview /> },
       { path: "log", element: <SyncLog /> },
@@ -18,8 +33,13 @@ const router = createBrowserRouter([
       { path: "status", element: <SystemStatus /> },
     ],
   },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }

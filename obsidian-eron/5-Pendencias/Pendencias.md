@@ -18,5 +18,25 @@
 - [ ] Quem recebe alertas de quarentena/erros?
 
 ## Decisões de front (premissas — revisar)
-- [ ] Precisa de autenticação/login real no dashboard? (hoje: sem login)
+- [x] Login no dashboard — implementado (fase mock, credencial em `.env`); trocar por sessão real do backend no go-live
+- [ ] Definir credenciais reais de acesso (hoje `admin` / `iazan` via env)
 - [ ] Quando backend existir, apontar `VITE_API_URL` e trocar `src/api/client.ts`
+
+## Melhorias de front implementadas (28/09)
+- [x] Login + rota protegida + logout ([[Frontend]])
+- [x] Drawer de detalhe do boleto (PDF, IDs CA/Zen, histórico de tentativas)
+- [x] Auto-refresh (60s) + indicador "atualizado há X" + botão atualizar
+- [x] ErrorState com "tentar de novo" + ErrorBoundary global
+- [x] Log: filtro por período, paginação e export CSV
+- [x] Badge de contagem de quarentena no menu
+- [x] Camada `client.ts` com fetch real via `VITE_API_URL` (fallback mock)
+- [x] ESLint + Prettier + `.gitattributes`
+- [x] Testes (Vitest + Testing Library) — 9 passando
+- [x] CI (GitHub Actions): lint + test + build
+
+## Backlog de front (próximos)
+- [ ] Sentry no front (hoje só ErrorBoundary com console)
+- [ ] Notificação ativa (e-mail/WhatsApp) ao cair boleto em quarentena
+- [ ] Virtualização da tabela se volume crescer muito
+- [ ] Reconciliação de pagamento (novo escopo)
+- [ ] Multi-tenant, caso IAZAN revenda a solução (novo escopo)

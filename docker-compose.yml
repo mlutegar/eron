@@ -1,0 +1,7 @@
+services:
+  eron:
+    build: .
+    container_name: eron
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3007:80"

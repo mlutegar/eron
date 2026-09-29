@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+.git
+obsidian-eron
+*.local
+.DS_Store
+tsconfig.tsbuildinfo
+Dockerfile
+.dockerignore

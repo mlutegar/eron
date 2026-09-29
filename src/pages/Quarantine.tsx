@@ -7,15 +7,14 @@ import { brl, dateTime } from "../lib/format";
 import type { QuarantineItem } from "../types/api";
 
 export function Quarantine() {
-  const [reload, setReload] = useState(0);
-  const { data, loading, error } = useAsync(getQuarantine, [reload]);
+  const { data, loading, error, refetch } = useAsync(getQuarantine);
   const [busy, setBusy] = useState<string | null>(null);
 
   async function handleReprocess(id: string) {
     setBusy(id);
     await reprocess(id);
     setBusy(null);
-    setReload((n) => n + 1);
+    refetch();
   }
 
   return (
@@ -28,7 +27,7 @@ export function Quarantine() {
       {loading ? (
         <Loading />
       ) : error || !data ? (
-        <ErrorState message={error ?? "Sem dados."} />
+        <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />
       ) : data.length === 0 ? (
         <div className="hairline rounded-xl border-flow/20 bg-flow/5 px-6 py-16 text-center">
           <div className="font-display text-lg text-flow">Nenhum boleto em quarentena</div>

@@ -59,11 +59,12 @@ export function PipelineFlow({ health }: { health: SystemHealth }) {
         </div>
         <div className="text-right text-xs text-fg-faint">
           <div>
-            Ultima sync <span className="font-mono text-fg-muted">{timeOnly(health.ultimaSync)}</span>
+            Ultima sync{" "}
+            <span className="font-mono text-fg-muted">{timeOnly(health.ultimaSync)}</span>
           </div>
           <div>
-            Proxima <span className="font-mono text-fg-muted">{timeOnly(health.proximaSync)}</span> ·
-            a cada {health.intervaloMin} min
+            Proxima <span className="font-mono text-fg-muted">{timeOnly(health.proximaSync)}</span>{" "}
+            · a cada {health.intervaloMin} min
           </div>
         </div>
       </div>

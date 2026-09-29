@@ -11,8 +11,7 @@ const cols: Column<ClientMappingType>[] = [
   {
     key: "zen",
     header: "Empresa no Zen",
-    cell: (r) =>
-      r.empresaZen ?? <span className="text-warn">nao encontrada</span>,
+    cell: (r) => r.empresaZen ?? <span className="text-warn">nao encontrada</span>,
   },
   {
     key: "sit",
@@ -27,7 +26,7 @@ const cols: Column<ClientMappingType>[] = [
 ];
 
 export function ClientMapping() {
-  const { data, loading, error } = useAsync(getClientMap);
+  const { data, loading, error, refetch } = useAsync(getClientMap);
   const pendentes = data?.filter((c) => c.situacao === "PENDENTE").length ?? 0;
 
   return (
@@ -47,7 +46,7 @@ export function ClientMapping() {
       {loading ? (
         <Loading />
       ) : error || !data ? (
-        <ErrorState message={error ?? "Sem dados."} />
+        <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />
       ) : (
         <DataTable
           columns={cols}

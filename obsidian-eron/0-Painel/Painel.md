@@ -9,6 +9,7 @@ Questor Zen** para a **ASSEJURC** (contato: Heron). Fornecedor: **IAZAN (João)*
 - [[Frontend]] — stack, telas e contrato de dados do dashboard
 - [[Escopo-e-Comercial]] — incluso/fora, cronograma e valores
 - [[Pendencias]] — o que falta validar/decidir
+- [[Deploy]] — deploy no VPS, porta alocada e Cloudflare Tunnel
 
 ## Status atual
 - ✅ Validação técnica em conta real (Venda 1591, R$ 10,00 — boleto IUGU IP)

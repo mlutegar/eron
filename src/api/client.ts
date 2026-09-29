@@ -1,15 +1,9 @@
 // Camada de acesso a dados.
-// HOJE: resolve a partir do mock com um pequeno atraso simulado.
-// FUTURO: trocar o corpo de cada funcao por `fetch(BASE + rota)`
-// mantendo as mesmas assinaturas/tipos. Nada mais no app muda.
+// Se VITE_API_URL estiver definido, faz fetch real ao backend integrador.
+// Caso contrario, resolve a partir do mock (src/data/mock.ts) com atraso simulado.
+// As assinaturas/tipos sao os mesmos nos dois modos — as telas nao mudam.
 
-import {
-  boletos,
-  clientMap,
-  health,
-  quarantine,
-  syncLog,
-} from "../data/mock";
+import { boletos, clientMap, health, quarantine, syncLog } from "../data/mock";
 import type {
   ClientMapping,
   Overview,
@@ -18,15 +12,26 @@ import type {
   SystemHealth,
 } from "../types/api";
 
-// export const BASE = import.meta.env.VITE_API_URL ?? "/api";
+const BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "";
+export const usingMock = BASE === "";
 
-const delay = <T,>(value: T, ms = 260): Promise<T> =>
+const delay = <T>(value: T, ms = 260): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
 
-// Mutavel em memoria para a acao de reprocessar (mock).
+async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...init,
+  });
+  if (!res.ok) throw new Error(`Erro ${res.status} ao acessar ${path}`);
+  return res.json() as Promise<T>;
+}
+
+// Mutavel em memoria para a acao de reprocessar (modo mock).
 let quarantineState: QuarantineItem[] = [...quarantine];
 
 export async function getOverview(): Promise<Overview> {
+  if (!usingMock) return http<Overview>("/overview");
   const sincronizados = syncLog.filter((l) => l.status === "SINCRONIZADO");
   const valorMes = boletos
     .filter((b) => b.status === "SINCRONIZADO")
@@ -45,22 +50,33 @@ export async function getOverview(): Promise<Overview> {
 }
 
 export async function getSyncLogs(): Promise<SyncLogEntry[]> {
+  if (!usingMock) return http<SyncLogEntry[]>("/sync-logs");
   return delay([...syncLog]);
 }
 
+/** Tentativas de sincronizacao de um boleto especifico (para o detalhe). */
+export async function getBoletoLogs(idCobranca: string): Promise<SyncLogEntry[]> {
+  if (!usingMock) return http<SyncLogEntry[]>(`/boletos/${idCobranca}/logs`);
+  return delay(syncLog.filter((l) => l.boleto.idCobranca === idCobranca));
+}
+
 export async function getQuarantine(): Promise<QuarantineItem[]> {
+  if (!usingMock) return http<QuarantineItem[]>("/quarantine");
   return delay([...quarantineState]);
 }
 
 export async function reprocess(id: string): Promise<QuarantineItem[]> {
+  if (!usingMock) return http<QuarantineItem[]>(`/quarantine/${id}/reprocess`, { method: "POST" });
   quarantineState = quarantineState.filter((q) => q.id !== id);
   return delay([...quarantineState], 500);
 }
 
 export async function getClientMap(): Promise<ClientMapping[]> {
+  if (!usingMock) return http<ClientMapping[]>("/clients");
   return delay([...clientMap]);
 }
 
 export async function getHealth(): Promise<SystemHealth> {
+  if (!usingMock) return http<SystemHealth>("/health");
   return delay(health);
 }

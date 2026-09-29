@@ -1,13 +1,14 @@
+import { useState } from "react";
 import { PipelineFlow } from "../components/PipelineFlow";
 import { StatCard } from "../components/StatCard";
-import { HealthDot } from "../components/StatusBadge";
+import { HealthDot, StatusBadge } from "../components/StatusBadge";
 import { DataTable, type Column } from "../components/DataTable";
+import { BoletoDrawer } from "../components/BoletoDrawer";
 import { Loading, ErrorState } from "../components/Loading";
 import { useAsync } from "../lib/useAsync";
 import { getOverview } from "../api/client";
-import { brl, dateTime } from "../lib/format";
-import type { SyncLogEntry } from "../types/api";
-import { StatusBadge } from "../components/StatusBadge";
+import { brl, dateTime, relativeFromNow } from "../lib/format";
+import type { Boleto, SyncLogEntry } from "../types/api";
 
 const cols: Column<SyncLogEntry>[] = [
   { key: "hora", header: "Quando", cell: (r) => dateTime(r.timestamp), mono: true },
@@ -17,21 +18,36 @@ const cols: Column<SyncLogEntry>[] = [
 ];
 
 export function Overview() {
-  const { data, loading, error } = useAsync(getOverview);
+  // Auto-refresh a cada 60s — painel de monitoramento.
+  const { data, loading, error, lastUpdated, refetch } = useAsync(getOverview, [], {
+    refreshMs: 60_000,
+  });
+  const [selected, setSelected] = useState<Boleto | null>(null);
 
-  if (loading) return <Loading />;
-  if (error || !data) return <ErrorState message={error ?? "Sem dados."} />;
+  if (loading && !data) return <Loading />;
+  if (error || !data) return <ErrorState message={error ?? "Sem dados."} onRetry={refetch} />;
 
   const { counts, health, ultimos } = data;
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end gap-3 text-xs text-fg-faint">
+        <span>Atualizado {relativeFromNow(lastUpdated)}</span>
+        <button onClick={refetch} className="rounded border border-line px-2 py-1 hover:text-fg">
+          Atualizar
+        </button>
+      </div>
+
       <PipelineFlow health={health} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Sincronizados hoje" value={String(counts.hoje)} accent />
         <StatCard label="Nesta semana" value={String(counts.semana)} />
-        <StatCard label="No mes" value={String(counts.mes)} hint={`${brl(counts.valorMes)} em boletos`} />
+        <StatCard
+          label="No mes"
+          value={String(counts.mes)}
+          hint={`${brl(counts.valorMes)} em boletos`}
+        />
         <StatCard
           label="Em quarentena"
           value={String(counts.emQuarentena)}
@@ -40,12 +56,13 @@ export function Overview() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-3">
+        <div className="space-y-3 lg:col-span-2">
           <h2 className="font-display text-lg font-semibold">Ultimas sincronizacoes</h2>
           <DataTable
             columns={cols}
             rows={ultimos}
             rowKey={(r) => r.id}
+            onRowClick={(r) => setSelected(r.boleto)}
             empty="Nenhuma sincronizacao registrada ainda."
           />
         </div>
@@ -67,6 +84,8 @@ export function Overview() {
           </ul>
         </div>
       </div>
+
+      <BoletoDrawer boleto={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
