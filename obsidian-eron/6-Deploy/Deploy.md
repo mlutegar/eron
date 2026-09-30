@@ -58,6 +58,6 @@ docker compose up -d --build  # rebuild + subir
 - Conexão da Conta Azul copiada para o volume (`docker cp` → `/data/.tokens.json`, chmod 600). **A cópia local foi apagada**: a CA troca o refresh_token a cada renovação, só um lugar pode renovar.
 - Usuário do painel `admin` criado (`docker compose exec eron-api node scripts/usuario.mjs criar admin`). Credenciais em `~/Documents/ChatGPT/heron/acessos-painel.txt` (fora do repo).
 - Verificado: front 200, `/api/healthz` ok, `/api/settings` 401 sem login, login ok, settings tudo `false`, detecção rodou (14 boletos aguardando), containers healthy.
-- **Ativação (01/10):** só no painel: data de corte 2026-10-01 → ligar chave geral → ligar modo automático. Nada a fazer na VPS.
+- **Ativação (01/10):** só no painel, tela **Envio de boletos** (30/09 a tela ganhou nomes para o cliente): 1) Data de início 01/10/2026 → 2) Enviar boletos ao Zen → 3) Envio automático. Nada a fazer na VPS.
 
 - **E-mail (29/09 21h):** `RESEND_API_KEY` e `EMAIL_REMETENTE` no `.env` da VPS; compose repassa ao container. Teste: `docker compose exec eron-api node scripts/email-teste.mjs <email>`.
