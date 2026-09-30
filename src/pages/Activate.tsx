@@ -41,6 +41,9 @@ export function friendlyError(e: unknown): string {
   if (/ZEN_NAO_CONFIGURADO/.test(msg)) {
     return "O Questor Zen ainda nao esta configurado neste servidor. Nenhum documento foi publicado.";
   }
+  if (/DATA_CORTE_INVALIDA/.test(msg)) {
+    return /recuar/.test(msg) ? "Para recuar a data de corte, desligue antes o envio ao Zen." : "Data de corte invalida.";
+  }
   if (/FORA_DO_HORARIO/.test(msg)) {
     return "Fora do horario de entrega (7h as 19h).";
   }
@@ -304,10 +307,14 @@ export function Activate() {
               </span>
               <input
                 type="date"
-                value={settings.dataCorte ?? ""}
-                onChange={(e) => {
+                defaultValue={settings.dataCorte ?? ""}
+                key={settings.dataCorte ?? "sem-data"}
+                onBlur={(e) => {
+                  // Salva so ao sair do campo e com ano completo: evita gravar "0002-10-01" enquanto digita.
                   const v = e.target.value;
-                  if (v) void saveSettings({ dataCorte: v }, `Data de corte: ${dateOnly(v)}.`);
+                  if (/^20\d{2}-\d{2}-\d{2}$/.test(v) && v !== settings.dataCorte) {
+                    void saveSettings({ dataCorte: v }, `Data de corte: ${dateOnly(v)}.`);
+                  }
                 }}
                 disabled={savingSettings}
                 className="w-full rounded-md border border-line bg-ink-900 px-2 py-1.5 text-fg"

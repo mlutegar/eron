@@ -182,6 +182,16 @@ describe("SyncEngine — travas de entrega", () => {
     expect(db.getParcela("p1")?.status).toBe("REGISTRADO"); // nada virou falha
   });
 
+  it("data de corte: rejeita formato invalido e recuo com o envio ligado", () => {
+    const { engine } = engineCom([]);
+    expect(() => engine.setSettings({ dataCorte: "0002-10-01" })).toThrow(/invalida/);
+    engine.setSettings({ dataCorte: "2026-10-01", envioHabilitado: true });
+    expect(() => engine.setSettings({ dataCorte: "2026-09-20" })).toThrow(/desligue/);
+    expect(engine.setSettings({ dataCorte: "2026-10-02" }).dataCorte).toBe("2026-10-02"); // avancar pode
+    engine.setSettings({ envioHabilitado: false });
+    expect(engine.setSettings({ dataCorte: "2026-09-20" }).dataCorte).toBe("2026-09-20"); // desligado pode recuar
+  });
+
   it("habilitar o envio sem data de corte define a data de corte como hoje", () => {
     const { engine } = engineCom([]);
     const s = engine.setSettings({ envioHabilitado: true });
@@ -295,6 +305,17 @@ describe("store (painel) sobre o banco", () => {
     expect(store.getPending()).toHaveLength(0);
     expect(store.getSyncLogs().filter((l) => l.status === "SINCRONIZADO")).toHaveLength(2);
     expect(store.getClientMap()[0]).toMatchObject({ cnpj: "41323983821", situacao: "MAPEADO" });
+  });
+
+  it("pendentes do painel respeitam a data de corte", async () => {
+    const antiga = parcelaCA("velha", { enviadoEm: "2026-09-20" });
+    const nova = parcelaCA("nova", { enviadoEm: "2026-10-02" });
+    const { engine, db } = engineCom([antiga, nova]);
+    const store = createStore(db, engine, 10);
+    await engine.detectar();
+    expect(store.getPending()).toHaveLength(2); // sem data de corte: tudo
+    engine.setSettings({ dataCorte: "2026-10-01" });
+    expect(store.getPending().map((b) => b.idParcela)).toEqual(["nova"]);
   });
 
   it("reprocessar libera a parcela em quarentena para a proxima rodada", async () => {

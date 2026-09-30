@@ -114,7 +114,12 @@ export function createStore(db: Db, engine: SyncEngine, intervaloMin: number) {
       return [...vistos.values()];
     },
     getHealth: health,
-    getPending: (): Boleto[] => db.listarPorStatus(["REGISTRADO", "QUARENTENA"], 1000).map(paraBoleto),
+    /** Pendentes que o robo de fato vai publicar: respeita a data de corte, quando definida. */
+    getPending(): Boleto[] {
+      const corte = engine.getSettings().dataCorte;
+      const desde = corte ? `${corte}T00:00:00` : "";
+      return db.listarPorStatus(["REGISTRADO", "QUARENTENA"], 1000).filter((r) => r.emitido_em >= desde).map(paraBoleto);
+    },
     isRunning: (): boolean => engine.isRunning(),
     getLastRun: (): LastRun => engine.getLastRun(),
     getSettings: (): Settings => engine.getSettings(),

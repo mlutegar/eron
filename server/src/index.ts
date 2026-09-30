@@ -157,7 +157,13 @@ app.get("/settings", (_req, res) => ok(res, store.getSettings()));
 app.post("/settings", (req, res) => {
   const parsed = SettingsSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "settings invalido", issues: parsed.error.issues });
-  const next = store.setSettings(parsed.data);
+  let next;
+  try {
+    next = store.setSettings(parsed.data);
+  } catch (err) {
+    if (err instanceof SyncError) return res.status(400).json({ error: err.code, mensagem: err.message });
+    throw err;
+  }
   log.info("settings alterados", { ...next, destinatarios: next.destinatarios.length });
   res.json(next);
 });

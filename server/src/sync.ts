@@ -42,7 +42,7 @@ export interface SyncDeps {
 }
 
 export class SyncError extends Error {
-  constructor(readonly code: "EXECUCAO_EM_ANDAMENTO" | "ENVIO_DESABILITADO" | "SEM_DATA_CORTE" | "FORA_DO_HORARIO" | "ZEN_NAO_CONFIGURADO", message: string) {
+  constructor(readonly code: "EXECUCAO_EM_ANDAMENTO" | "ENVIO_DESABILITADO" | "SEM_DATA_CORTE" | "FORA_DO_HORARIO" | "ZEN_NAO_CONFIGURADO" | "DATA_CORTE_INVALIDA", message: string) {
     super(message);
     this.name = "SyncError";
   }
@@ -106,6 +106,16 @@ export class SyncEngine {
    */
   setSettings(patch: Partial<Settings>): Settings {
     const atual = this.getSettings();
+    if (patch.dataCorte !== undefined && patch.dataCorte !== null) {
+      if (!/^20\d{2}-\d{2}-\d{2}$/.test(patch.dataCorte)) {
+        throw new SyncError("DATA_CORTE_INVALIDA", "Data de corte invalida.");
+      }
+      // Com o envio ligado, recuar a data de corte liberaria boletos antigos: exige desligar antes.
+      const ligado = patch.envioHabilitado ?? atual.envioHabilitado;
+      if (ligado && atual.envioHabilitado && atual.dataCorte && patch.dataCorte < atual.dataCorte) {
+        throw new SyncError("DATA_CORTE_INVALIDA", "Para recuar a data de corte, desligue antes o envio ao Zen.");
+      }
+    }
     const next: Settings = { ...atual, ...patch };
     if (next.envioHabilitado && !next.dataCorte) next.dataCorte = dataEmBrasilia(this.now());
     this.deps.db.setConfig("settings", next);
