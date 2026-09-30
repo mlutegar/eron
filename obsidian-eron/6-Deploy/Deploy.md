@@ -59,3 +59,5 @@ docker compose up -d --build  # rebuild + subir
 - Usuário do painel `admin` criado (`docker compose exec eron-api node scripts/usuario.mjs criar admin`). Credenciais em `~/Documents/ChatGPT/heron/acessos-painel.txt` (fora do repo).
 - Verificado: front 200, `/api/healthz` ok, `/api/settings` 401 sem login, login ok, settings tudo `false`, detecção rodou (14 boletos aguardando), containers healthy.
 - **Ativação (01/10):** só no painel: data de corte 2026-10-01 → ligar chave geral → ligar modo automático. Nada a fazer na VPS.
+
+- **E-mail (29/09 21h):** `RESEND_API_KEY` e `EMAIL_REMETENTE` no `.env` da VPS; compose repassa ao container. Teste: `docker compose exec eron-api node scripts/email-teste.mjs <email>`.
