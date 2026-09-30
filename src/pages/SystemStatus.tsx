@@ -29,7 +29,7 @@ export function SystemStatus() {
     <div>
       <PageHeader
         title="Status do sistema"
-        subtitle="Saude dos componentes da integracao e janela de sincronizacao."
+        subtitle="Se a conexao com a Conta Azul e com o Questor Zen esta funcionando. Se algo aparecer em vermelho, avise a IAZAN."
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">

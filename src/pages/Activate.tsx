@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { DataTable, type Column } from "../components/DataTable";
 import { BoletoDrawer } from "../components/BoletoDrawer";
@@ -24,7 +24,7 @@ function ResultBadge({ ok }: { ok: boolean }) {
       }`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {ok ? "Subiu" : "Nao subiu"}
+      {ok ? "Enviado" : "Nao enviado"}
     </span>
   );
 }
@@ -33,19 +33,19 @@ function ResultBadge({ ok }: { ok: boolean }) {
 export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/ENVIO_DESABILITADO/.test(msg)) {
-    return "O envio ao Zen esta desabilitado. Ligue a chave geral nos controles do robo para publicar.";
+    return "O envio esta desligado. Ligue \"Enviar boletos ao Zen\" para enviar.";
   }
   if (/SEM_DATA_CORTE/.test(msg)) {
-    return "Defina a data de corte antes de publicar (so boletos emitidos a partir dela entram).";
+    return "Defina a data de inicio antes de enviar.";
   }
   if (/ZEN_NAO_CONFIGURADO/.test(msg)) {
     return "O Questor Zen ainda nao esta configurado neste servidor. Nenhum documento foi publicado.";
   }
   if (/DATA_CORTE_INVALIDA/.test(msg)) {
-    return /recuar/.test(msg) ? "Para recuar a data de corte, desligue antes o envio ao Zen." : "Data de corte invalida.";
+    return /recuar/.test(msg) ? "Para voltar a data de inicio, desligue antes \"Enviar boletos ao Zen\"." : "Data de inicio invalida.";
   }
   if (/FORA_DO_HORARIO/.test(msg)) {
-    return "Fora do horario de entrega (7h as 19h).";
+    return "Fora do horario de envio (7h as 19h).";
   }
   if (/CA_NAO_CONECTADA|consentimento|sess[aã]o/i.test(msg)) {
     return "Sessao da Conta Azul expirada. Peca o codigo do banco ao cliente e refaca o consentimento.";
@@ -105,7 +105,7 @@ export function Activate() {
     }
     const total = pendentes?.length ?? 0;
     const alvo = settings?.limitePorRodada && total > settings.limitePorRodada ? settings.limitePorRodada : total;
-    if (total > 0 && !window.confirm(`Ligar o robo e processar ${alvo} boleto(s) pendente(s)?`)) {
+    if (total > 0 && !window.confirm(`Enviar agora ${alvo} boleto(s) ao Questor Zen?`)) {
       return;
     }
     setRunning(true);
@@ -150,23 +150,23 @@ export function Activate() {
   function toggleEnvio() {
     if (!settings) return;
     if (settings.envioHabilitado) {
-      void saveSettings({ envioHabilitado: false, autoRun: false }, "Envio ao Zen desabilitado. Nada sera publicado.");
+      void saveSettings({ envioHabilitado: false, autoRun: false }, "Envio desligado. Nenhum boleto sera enviado ao Zen.");
       return;
     }
     const corte = settings.dataCorte ?? hojeISO();
     const ok = window.confirm(
-      `Habilitar o envio REAL de boletos ao Questor Zen?\n\n` +
-        `So boletos emitidos a partir de ${dateOnly(corte)} entram, no maximo ${settings.limitePorRodada} por rodada. ` +
-        `O modo automatico continua desligado ate voce liga-lo.`,
+      `Ligar o envio de boletos ao Questor Zen?\n\n` +
+        `Serao enviados os boletos em aberto emitidos a partir de ${dateOnly(corte)}. ` +
+        `O cliente recebe o aviso do Zen por e-mail.`,
     );
     if (!ok) return;
-    void saveSettings({ envioHabilitado: true, dataCorte: corte }, "Envio ao Zen habilitado.");
+    void saveSettings({ envioHabilitado: true, dataCorte: corte }, "Envio ligado.");
   }
 
   function toggleAuto() {
     if (!settings) return;
     const next = !settings.autoRun;
-    void saveSettings({ autoRun: next }, next ? "Modo automatico ligado (7h as 19h)." : "Modo automatico desligado.");
+    void saveSettings({ autoRun: next }, next ? "Envio automatico ligado (a cada 10 min, das 7h as 19h)." : "Envio automatico desligado.");
   }
 
   const falhas = useMemo(() => result?.itens.filter((i) => !i.ok) ?? [], [result]);
@@ -207,123 +207,117 @@ export function Activate() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      {/* Ativador */}
-      <section className="hairline rounded-2xl bg-ink-800 px-6 py-10 text-center">
-        <div className="mb-2 text-xs font-medium uppercase tracking-widest text-fg-faint">
+      {/* Estado do envio */}
+      <section className="hairline rounded-2xl bg-ink-800 px-6 py-8 text-center">
+        {publishingSimulated ? (
+          <StatusLine tone="warn" titulo="Simulador" texto="Dados ficticios. O botao abaixo so simula o envio." />
+        ) : !settings ? null : !settings.envioHabilitado ? (
+          <StatusLine tone="warn" titulo="Envio desligado" texto="Nenhum boleto esta sendo enviado ao Questor Zen." />
+        ) : settings.autoRun ? (
+          <StatusLine
+            tone="ok"
+            titulo="Envio ligado"
+            texto={`Boletos emitidos a partir de ${dateOnly(settings.dataCorte ?? hojeISO())} sao enviados automaticamente, a cada 10 minutos, das 7h as 19h.`}
+          />
+        ) : (
+          <StatusLine
+            tone="warn"
+            titulo="Envio ligado, automatico desligado"
+            texto={`Boletos emitidos a partir de ${dateOnly(settings.dataCorte ?? hojeISO())} so sao enviados quando voce clicar em Enviar agora.`}
+          />
+        )}
+
+        <p className="mx-auto mt-5 max-w-md text-sm text-fg-muted">
           {running
-            ? "Processando…"
-            : publishingSimulated
-              ? "Simulador pronto"
-              : envioBloqueado
-                ? "Envio desabilitado"
-                : "Robo pronto"}
-        </div>
-        <h1 className="font-display text-2xl font-semibold text-fg">
-          {publishingSimulated ? "Simular publicacao de boletos" : "Publicar boletos no Questor Zen"}
-        </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-fg-muted">
-          {running
-            ? progress
-              ? `${publishingSimulated ? "Simulando envio" : "Enviando ao e-Doc do Zen"}… (${progress.total} pendente(s))`
-              : "Varrendo os boletos pendentes…"
+            ? `${publishingSimulated ? "Simulando envio" : "Enviando ao Questor Zen"}… (${progress?.total ?? 0} boleto(s))`
             : pendingCount > 0
-              ? `${pendingCount} boleto(s) pendente(s) para processar.`
-              : "Nenhum boleto pendente no momento."}
+              ? `${pendingCount} boleto(s) aguardando envio.`
+              : "Nenhum boleto aguardando envio."}
         </p>
 
         <button
           onClick={handleRun}
           disabled={running || envioBloqueado}
-          title={envioBloqueado ? "Ligue a chave geral do envio nos controles abaixo." : undefined}
-          className="mt-6 inline-flex items-center gap-2 rounded-full border border-flow/40 bg-flow/15 px-8 py-3 font-display text-base font-semibold text-flow transition-transform hover:bg-flow/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          title={envioBloqueado ? "Ligue \"Enviar boletos ao Zen\" abaixo para poder enviar." : undefined}
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-flow/40 bg-flow/15 px-8 py-3 font-display text-base font-semibold text-flow transition-transform hover:bg-flow/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {running ? (
             <>
-              <Spinner /> Processando…
+              <Spinner /> Enviando…
             </>
           ) : (
             <>
-              <PlayIcon /> Ativar
+              <PlayIcon /> Enviar agora
             </>
           )}
         </button>
-        {envioBloqueado && (
-          <p className="mt-3 text-xs text-warn">
-            Nenhum boleto sera publicado enquanto a chave geral estiver desligada.
-          </p>
-        )}
+        <p className="mx-auto mt-3 max-w-md text-xs text-fg-faint">
+          {envioBloqueado
+            ? "Disponivel depois de ligar \"Enviar boletos ao Zen\"."
+            : "Envia na hora os boletos que estao aguardando, sem esperar os 10 minutos."}
+        </p>
       </section>
 
-      {/* Controles do robo */}
+      {/* Configuracao do envio: 3 passos */}
       {settings && (
-        <section className="hairline rounded-2xl bg-ink-800 p-5" aria-labelledby="controles-robo">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="controles-robo" className="font-display text-base font-semibold">
-              Controles do robo
+        <section className="hairline rounded-2xl bg-ink-800 p-5" aria-labelledby="config-envio">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 id="config-envio" className="font-display text-base font-semibold">
+              Configuracao do envio
             </h2>
             <span className="text-xs text-fg-faint">{savingSettings ? "Salvando…" : "Salvo"}</span>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex items-start gap-3 rounded-xl border border-line p-3">
-              <input
-                type="checkbox"
-                checked={settings.envioHabilitado}
-                onChange={toggleEnvio}
-                disabled={savingSettings}
-                className="mt-0.5 h-4 w-4 accent-flow"
-              />
-              <span className="text-sm">
-                <span className="block font-medium text-fg">Envio ao Zen (chave geral)</span>
-                <span className="block text-xs text-fg-muted">
-                  {settings.envioHabilitado
-                    ? "Ligado: o botao Ativar e o modo automatico podem publicar."
-                    : "Desligado: nada e publicado, nem pelo botao Ativar."}
-                </span>
-              </span>
-            </label>
+          <p className="mb-4 text-xs text-fg-muted">Faca uma vez, nesta ordem. Depois o envio funciona sozinho.</p>
 
-            <label className="flex items-start gap-3 rounded-xl border border-line p-3">
-              <input
-                type="checkbox"
-                checked={settings.autoRun}
-                onChange={toggleAuto}
-                disabled={savingSettings || !settings.envioHabilitado}
-                className="mt-0.5 h-4 w-4 accent-flow"
-              />
-              <span className="text-sm">
-                <span className="block font-medium text-fg">Modo automatico</span>
-                <span className="block text-xs text-fg-muted">
-                  {settings.envioHabilitado
-                    ? "Publica sozinho a cada janela do agendador, das 7h as 19h."
-                    : "Disponivel depois de ligar a chave geral."}
-                </span>
-              </span>
-            </label>
-
-            <label className="block rounded-xl border border-line p-3 text-sm">
-              <span className="block font-medium text-fg">Data de corte</span>
-              <span className="mb-2 block text-xs text-fg-muted">
-                So boletos emitidos a partir desta data entram.
-              </span>
+          <ol className="space-y-3">
+            <Passo n={1} titulo="Data de inicio" texto="So os boletos emitidos a partir desta data serao enviados. Os anteriores ficam de fora.">
               <input
                 type="date"
+                aria-label="Data de inicio"
                 defaultValue={settings.dataCorte ?? ""}
                 key={settings.dataCorte ?? "sem-data"}
                 onBlur={(e) => {
                   // Salva so ao sair do campo e com ano completo: evita gravar "0002-10-01" enquanto digita.
                   const v = e.target.value;
                   if (/^20\d{2}-\d{2}-\d{2}$/.test(v) && v !== settings.dataCorte) {
-                    void saveSettings({ dataCorte: v }, `Data de corte: ${dateOnly(v)}.`);
+                    void saveSettings({ dataCorte: v }, `Data de inicio: ${dateOnly(v)}.`);
                   }
                 }}
                 disabled={savingSettings}
-                className="w-full rounded-md border border-line bg-ink-900 px-2 py-1.5 text-fg"
+                className="mt-2 w-full max-w-xs rounded-md border border-line bg-ink-900 px-2 py-1.5 text-fg"
               />
-            </label>
+            </Passo>
 
-            <label className="block rounded-xl border border-line p-3 text-sm">
-              <span className="block font-medium text-fg">Limite por rodada</span>
-              <span className="mb-2 block text-xs text-fg-muted">Maximo de boletos publicados por execucao.</span>
+            <Passo
+              n={2}
+              titulo="Enviar boletos ao Zen"
+              texto="Liga ou desliga todo o envio. Desligado, nenhum boleto e enviado, nem pelo botao Enviar agora."
+              toggle={{
+                checked: settings.envioHabilitado,
+                onChange: toggleEnvio,
+                disabled: savingSettings || (!settings.envioHabilitado && !settings.dataCorte),
+                aviso: !settings.envioHabilitado && !settings.dataCorte ? "Defina a data de inicio primeiro." : undefined,
+              }}
+            />
+
+            <Passo
+              n={3}
+              titulo="Envio automatico"
+              texto="Envia sozinho a cada 10 minutos, das 7h as 19h. Desligado, so envia quando voce clicar em Enviar agora."
+              toggle={{
+                checked: settings.autoRun,
+                onChange: toggleAuto,
+                disabled: savingSettings || !settings.envioHabilitado,
+                aviso: !settings.envioHabilitado ? "Disponivel depois de ligar o passo 2." : undefined,
+              }}
+            />
+          </ol>
+
+          <details className="mt-4 text-sm">
+            <summary className="cursor-pointer text-xs text-fg-faint hover:text-fg-muted">Avancado</summary>
+            <label className="mt-3 block max-w-xs">
+              <span className="block font-medium text-fg">Limite por envio</span>
+              <span className="mb-2 block text-xs text-fg-muted">Maximo de boletos enviados de uma vez. Padrao: 20.</span>
               <input
                 type="number"
                 min={1}
@@ -333,14 +327,14 @@ export function Activate() {
                 onBlur={(e) => {
                   const n = Number(e.target.value);
                   if (Number.isInteger(n) && n >= 1 && n <= 500 && n !== settings.limitePorRodada) {
-                    void saveSettings({ limitePorRodada: n }, `Limite por rodada: ${n}.`);
+                    void saveSettings({ limitePorRodada: n }, `Limite por envio: ${n}.`);
                   }
                 }}
                 disabled={savingSettings}
                 className="w-full rounded-md border border-line bg-ink-900 px-2 py-1.5 font-mono text-fg"
               />
             </label>
-          </div>
+          </details>
         </section>
       )}
 
@@ -349,13 +343,13 @@ export function Activate() {
         <section className="space-y-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <h2 className="font-display text-lg font-semibold">Resultado</h2>
-            <span className="text-sm text-flow">{result.subiram} subiram</span>
+            <span className="text-sm text-flow">{result.subiram} enviado(s)</span>
             {result.naoSubiram > 0 && (
-              <span className="text-sm text-danger">{result.naoSubiram} nao subiram</span>
+              <span className="text-sm text-danger">{result.naoSubiram} nao enviado(s)</span>
             )}
-            <span className="text-sm text-fg-muted">{brl(result.valorPublicado)} publicado(s)</span>
+            <span className="text-sm text-fg-muted">{brl(result.valorPublicado)} no total</span>
             <span className="ml-auto text-xs text-fg-faint">
-              Ultima execucao: {dateTime(result.executadoEm)}
+              Ultimo envio: {dateTime(result.executadoEm)}
             </span>
           </div>
 
@@ -363,7 +357,7 @@ export function Activate() {
           {gruposFalha.length > 0 && (
             <div className="hairline rounded-xl bg-ink-800 p-4">
               <div className="mb-2 text-xs font-medium uppercase tracking-wider text-fg-faint">
-                Falhas por motivo
+                Motivos dos nao enviados
               </div>
               <ul className="space-y-1 text-sm">
                 {gruposFalha.map(([motivo, n]) => (
@@ -385,13 +379,13 @@ export function Activate() {
                   disabled={running || envioBloqueado}
                   className="rounded-lg border border-flow/40 px-3 py-1.5 text-sm text-flow hover:bg-flow/10 disabled:opacity-60"
                 >
-                  Tentar de novo os que falharam
+                  Tentar de novo os nao enviados
                 </button>
                 <button
                   onClick={exportFailuresCsv}
                   className="rounded-lg border border-line px-3 py-1.5 text-sm text-fg-muted hover:text-fg"
                 >
-                  Exportar falhas (CSV)
+                  Baixar lista (CSV)
                 </button>
                 <label className="flex items-center gap-1.5 text-sm text-fg-muted">
                   <input
@@ -412,7 +406,7 @@ export function Activate() {
             rowKey={(r) => r.boleto.idCobranca}
             onRowClick={(r) => setSelected(r.boleto)}
             rowAccent={(r) => (r.ok ? "flow" : "danger")}
-            empty="Nenhum boleto pendente para processar."
+            empty="Nenhum boleto enviado nesta execucao."
           />
 
           <div className="text-right">
@@ -425,6 +419,69 @@ export function Activate() {
 
       <BoletoDrawer boleto={selected} onClose={() => setSelected(null)} />
     </div>
+  );
+}
+
+function StatusLine({ tone, titulo, texto }: { tone: "ok" | "warn"; titulo: string; texto: string }) {
+  const cor = tone === "ok" ? "text-flow" : "text-warn";
+  const ponto = tone === "ok" ? "bg-flow animate-breathe" : "bg-warn";
+  return (
+    <div role="status">
+      <div className={`inline-flex items-center gap-2 font-display text-lg font-semibold ${cor}`}>
+        <span className={`h-2.5 w-2.5 rounded-full ${ponto}`} aria-hidden />
+        {titulo}
+      </div>
+      <p className="mx-auto mt-1 max-w-md text-sm text-fg-muted">{texto}</p>
+    </div>
+  );
+}
+
+function Passo({
+  n,
+  titulo,
+  texto,
+  toggle,
+  children,
+}: {
+  n: number;
+  titulo: string;
+  texto: string;
+  toggle?: { checked: boolean; onChange: () => void; disabled: boolean; aviso?: string };
+  children?: ReactNode;
+}) {
+  return (
+    <li className="flex gap-3 rounded-xl border border-line p-3">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-flow/15 font-mono text-xs text-flow">{n}</span>
+      <div className="min-w-0 flex-1 text-sm">
+        {toggle ? (
+          <label className="flex items-start justify-between gap-3">
+            <span>
+              <span className="block font-medium text-fg">{titulo}</span>
+              <span className="block text-xs text-fg-muted">{texto}</span>
+              {toggle.aviso && <span className="mt-1 block text-xs text-warn">{toggle.aviso}</span>}
+            </span>
+            <span className="flex items-center gap-2 pt-0.5">
+              <span className={`text-xs ${toggle.checked ? "text-flow" : "text-fg-faint"}`}>{toggle.checked ? "Ligado" : "Desligado"}</span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={titulo}
+                checked={toggle.checked}
+                onChange={toggle.onChange}
+                disabled={toggle.disabled}
+                className="h-4 w-4 accent-flow"
+              />
+            </span>
+          </label>
+        ) : (
+          <>
+            <span className="block font-medium text-fg">{titulo}</span>
+            <span className="block text-xs text-fg-muted">{texto}</span>
+            {children}
+          </>
+        )}
+      </div>
+    </li>
   );
 }
 

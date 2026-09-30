@@ -30,7 +30,7 @@ export function Quarantine() {
     <div>
       <PageHeader
         title="Quarentena"
-        subtitle="Boletos que nao puderam ser publicados automaticamente e precisam de intervencao."
+        subtitle="Boletos que nao conseguiram ser enviados, com o motivo. Corrija o cadastro no Zen e o sistema tenta de novo sozinho, ou clique em Reprocessar."
       />
 
       {loading ? (

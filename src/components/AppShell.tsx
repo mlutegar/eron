@@ -12,7 +12,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 const nav = [
-  { to: "/", label: "Ativar", end: true },
+  { to: "/", label: "Envio de boletos", end: true },
   { to: "/log", label: "Log de sincronizacao" },
   { to: "/quarentena", label: "Quarentena", badge: true },
   { to: "/clientes", label: "Mapeamento de clientes" },
@@ -194,7 +194,7 @@ export function AppShell() {
                 className={`h-2 w-2 rounded-full ${publishingSimulated ? "bg-warn" : "animate-breathe bg-flow"}`}
                 aria-hidden
               />
-              {publishingSimulated ? "Modo demonstracao" : "Servico ativo"}
+              {publishingSimulated ? "Modo demonstracao" : "Sistema no ar"}
             </span>
             <ThemeToggle className="hidden md:grid" />
             <button onClick={handleLogout} className="hover:text-fg md:hidden">
@@ -205,7 +205,7 @@ export function AppShell() {
 
         {publishingSimulated && (
           <div role="status" className="border-b border-warn/30 bg-warn/10 px-5 py-3 text-sm text-warn md:px-8">
-            Dados de demonstracao. O botao Ativar simula a publicacao; nenhum boleto e enviado ao Questor Zen.
+            Dados de demonstracao. O botao Enviar agora so simula; nenhum boleto e enviado ao Questor Zen.
           </div>
         )}
 

@@ -154,7 +154,7 @@ export function SyncLog() {
     <div>
       <PageHeader
         title="Log de sincronizacao"
-        subtitle="Cada tentativa de publicar um boleto no Zen. Clique numa linha para ver detalhes."
+        subtitle="Tudo o que aconteceu com cada boleto: encontrado na Conta Azul, enviado ao Zen ou com problema. Clique numa linha para ver os detalhes."
       />
 
       {/* Barra desktop */}

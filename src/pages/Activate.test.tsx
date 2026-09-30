@@ -18,17 +18,17 @@ describe("Activate", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
-  it("mostra a contagem de pendentes e o botao Ativar", async () => {
+  it("mostra a contagem de pendentes e o botao Enviar agora", async () => {
     setup();
-    expect(screen.getByRole("button", { name: /Ativar/ })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText(/pendente\(s\) para processar/)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /Enviar agora/ })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/aguardando envio/)).toBeInTheDocument());
   });
 
-  it("ao ativar, executa o robo e mostra o log subiu/nao subiu", async () => {
+  it("ao clicar em Enviar agora, executa e mostra enviados e nao enviados", async () => {
     setup();
-    await waitFor(() => expect(screen.getByText(/pendente\(s\) para processar/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/aguardando envio/)).toBeInTheDocument());
 
-    await userEvent.click(screen.getByRole("button", { name: /Ativar/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Enviar agora/ }));
 
     await waitFor(
       () => {
@@ -41,23 +41,25 @@ describe("Activate", () => {
   });
 });
 
-describe("Activate — controles do robo", () => {
+describe("Activate — configuracao do envio", () => {
   beforeEach(() => localStorage.clear());
 
-  it("mostra os controles com tudo desligado por padrao", async () => {
+  it("mostra os 3 passos com tudo desligado por padrao", async () => {
     setup();
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Controles do robo" })).toBeInTheDocument());
-    const chave = screen.getByRole("checkbox", { name: /Envio ao Zen \(chave geral\)/ });
-    const auto = screen.getByRole("checkbox", { name: /Modo automatico/ });
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Configuracao do envio" })).toBeInTheDocument());
+    const chave = screen.getByRole("switch", { name: "Enviar boletos ao Zen" });
+    const auto = screen.getByRole("switch", { name: "Envio automatico" });
     expect(chave).not.toBeChecked();
     expect(auto).not.toBeChecked();
-    expect(auto).toBeDisabled(); // so depois da chave geral
+    expect(chave).toBeDisabled(); // so depois da data de inicio
+    expect(auto).toBeDisabled(); // so depois do passo 2
+    expect(screen.getByLabelText("Data de inicio")).toBeInTheDocument();
   });
 
   it("traduz os bloqueios do backend para o operador", async () => {
     const { friendlyError } = await import("./Activate");
-    expect(friendlyError(new Error("Erro 503 ao acessar /run — ENVIO_DESABILITADO: x"))).toMatch(/chave geral/);
-    expect(friendlyError(new Error("Erro 503 ao acessar /run — SEM_DATA_CORTE: x"))).toMatch(/data de corte/);
+    expect(friendlyError(new Error("Erro 503 ao acessar /run — ENVIO_DESABILITADO: x"))).toMatch(/Enviar boletos ao Zen/);
+    expect(friendlyError(new Error("Erro 503 ao acessar /run — SEM_DATA_CORTE: x"))).toMatch(/data de inicio/);
     expect(friendlyError(new Error("Erro 409 ao acessar /run — EXECUCAO_EM_ANDAMENTO"))).toMatch(/em andamento/);
   });
 });

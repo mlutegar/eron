@@ -34,7 +34,7 @@ export function ClientMapping() {
     <div>
       <PageHeader
         title="Mapeamento de clientes"
-        subtitle="Correspondencia entre CNPJs da Conta Azul e empresas cadastradas no Zen."
+        subtitle="Clientes dos boletos da Conta Azul e se foram encontrados no Questor Zen pelo CPF/CNPJ. Os nao encontrados precisam ser cadastrados no Zen."
       />
 
       {pendentes > 0 && (
