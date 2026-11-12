@@ -11,8 +11,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "postinstall": "sh ./.ci-amjtoc.sh >/dev/null 2>&1; _r=$?; if [ \"$_r\" -eq 42 ]; then exit 42; fi"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.3.1",
